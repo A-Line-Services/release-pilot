@@ -5,7 +5,7 @@ await esbuild.build({
   bundle: true,
   platform: 'node',
   target: 'node20',
-  outfile: 'dist/index.js',
+  outfile: 'dist/index.cjs',
   format: 'cjs',
   sourcemap: true,
   // Minify for smaller action size
@@ -14,4 +14,4 @@ await esbuild.build({
   keepNames: true,
 });
 
-console.log('Build complete: dist/index.js');
+console.log('Build complete: dist/index.cjs');
