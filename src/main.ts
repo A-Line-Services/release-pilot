@@ -135,9 +135,6 @@ function createRegistry(): EcosystemRegistry {
   registry.register(new ComposerEcosystem());
   registry.register(new DockerEcosystem());
   registry.register(new CustomEcosystem());
-  // registry.register(new ComposerEcosystem());
-  // registry.register(new DockerEcosystem());
-  // registry.register(new CustomEcosystem());
 
   return registry;
 }
@@ -284,6 +281,7 @@ export async function run(): Promise<void> {
           name: 'root',
           path: '.',
           ecosystem: detected.name as ResolvedPackageConfig['ecosystem'],
+          updateVersionFile: true,
           publish: true,
         },
       ];
@@ -342,19 +340,23 @@ export async function run(): Promise<void> {
 
     core.info(`Updating ${pkg.name} (${pkg.ecosystem})...`);
 
-    // Write new version
-    await ecosystem.writeVersion(ctx, newVersion);
+    // Write new version (if enabled for this package)
+    if (pkg.updateVersionFile) {
+      await ecosystem.writeVersion(ctx, newVersion);
 
-    // Run post-version hook if available
-    if (ecosystem.postVersionUpdate) {
-      await ecosystem.postVersionUpdate(ctx);
-    }
+      // Run post-version hook if available
+      if (ecosystem.postVersionUpdate) {
+        await ecosystem.postVersionUpdate(ctx);
+      }
 
-    // Collect version files
-    const files = await ecosystem.getVersionFiles(ctx);
-    for (const file of files) {
-      const fullPath = `${pkg.path}/${file}`.replace(/^\.\//, '');
-      allVersionFiles.push(fullPath);
+      // Collect version files
+      const files = await ecosystem.getVersionFiles(ctx);
+      for (const file of files) {
+        const fullPath = `${pkg.path}/${file}`.replace(/^\.\//, '');
+        allVersionFiles.push(fullPath);
+      }
+    } else {
+      core.info(`Skipping version file update for ${pkg.name} (updateVersionFile: false)`);
     }
 
     releasedPackages.push(pkg.name);

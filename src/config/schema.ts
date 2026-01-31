@@ -116,6 +116,12 @@ export const PackageConfig = a.object(
     /** Custom version file path (overrides ecosystem default) */
     versionFile: a.optional(a.string()),
 
+    /**
+     * Whether to update the version in manifest files (default: true)
+     * Set to false for packages that use git tags for versioning (e.g., GitHub Actions)
+     */
+    updateVersionFile: a.optional(a.boolean()),
+
     /** Whether to publish this package (default: true) */
     publish: a.optional(a.boolean()),
 

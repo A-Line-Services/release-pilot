@@ -37,6 +37,7 @@ export interface ResolvedPackageConfig {
   path: string;
   ecosystem: PackageConfigType['ecosystem'];
   versionFile?: string;
+  updateVersionFile: boolean;
   publish: boolean;
   publishCommand?: string;
   publishArgs?: string[];
@@ -295,6 +296,7 @@ function applyPackageDefaults(pkg: PackageConfigType): ResolvedPackageConfig {
     path: pkg.path ?? '.',
     ecosystem: pkg.ecosystem,
     versionFile: pkg.versionFile,
+    updateVersionFile: pkg.updateVersionFile ?? true,
     publish: pkg.publish ?? true,
     publishCommand: pkg.publishCommand,
     publishArgs: pkg.publishArgs,

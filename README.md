@@ -271,6 +271,7 @@ packages:
     path: string          # Directory path (default: .)
     ecosystem: string     # npm|cargo|python|go|composer|docker|custom
     versionFile: string   # Custom version file path
+    updateVersionFile: boolean  # Update version in manifest (default: true)
     publish: boolean      # Enable publishing (default: true)
     publishCommand: string    # For custom ecosystem
     publishArgs: string[]     # Arguments for custom command

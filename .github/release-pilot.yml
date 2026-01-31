@@ -7,6 +7,7 @@ packages:
     ecosystem: custom
     # GitHub Actions are "published" by pushing tags
     # The dist/ directory is committed and the action.yml references it
+    updateVersionFile: false
     publish: false
 
 version:

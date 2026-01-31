@@ -239,6 +239,20 @@ packages:
       expect(config.packages[1]?.path).toBe('./custom');
     });
 
+    test('applies default updateVersionFile (true)', () => {
+      const config = applyDefaults({
+        packages: [
+          { name: 'default', ecosystem: 'npm' },
+          { name: 'explicit-true', ecosystem: 'cargo', updateVersionFile: true },
+          { name: 'explicit-false', ecosystem: 'custom', updateVersionFile: false },
+        ],
+      });
+
+      expect(config.packages[0]?.updateVersionFile).toBe(true);
+      expect(config.packages[1]?.updateVersionFile).toBe(true);
+      expect(config.packages[2]?.updateVersionFile).toBe(false);
+    });
+
     test('applies default docker settings', () => {
       const config = applyDefaults({
         packages: [
