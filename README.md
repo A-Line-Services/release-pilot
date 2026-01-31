@@ -149,11 +149,11 @@ Report what would happen without making changes:
 |-----------|--------------|-----------------|
 | `npm` | `package.json` | `npm publish` |
 | `cargo` | `Cargo.toml` | `cargo publish` |
-| `python` | `pyproject.toml` | Coming soon |
-| `go` | `go.mod` | Git tag only |
-| `composer` | `composer.json` | Coming soon |
-| `docker` | `Dockerfile` | Coming soon |
-| `custom` | User-defined | User-defined |
+| `python` | `pyproject.toml` | `uv publish` / `twine upload` |
+| `go` | `go.mod` | Git tag only (no publish) |
+| `composer` | `composer.json` | Git tag only (Packagist) |
+| `docker` | `Dockerfile` | `docker buildx build --push` |
+| `custom` | User-defined | User-defined script |
 
 ## Docker Support
 
@@ -358,6 +358,9 @@ See the [examples](./examples) directory for complete configurations:
 - [Simple NPM](./examples/simple-npm) - Single package with auto-detection
 - [Monorepo](./examples/monorepo) - NPM monorepo with ordered releases
 - [Rust Crate](./examples/rust-crate) - Cargo crate for crates.io
+- [Python Package](./examples/python-package) - Python package for PyPI
+- [Go Module](./examples/go-module) - Go module with git tags
+- [Docker Image](./examples/docker-image) - Multi-arch Docker builds
 - [Multi-Ecosystem](./examples/multi-ecosystem) - Rust + Node.js bindings
 
 ## Development

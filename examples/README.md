@@ -9,6 +9,9 @@ Example configurations for common use cases.
 | [simple-npm](./simple-npm) | Single NPM package with auto-detection |
 | [monorepo](./monorepo) | NPM monorepo with multiple packages |
 | [rust-crate](./rust-crate) | Rust crate published to crates.io |
+| [python-package](./python-package) | Python package published to PyPI |
+| [go-module](./go-module) | Go module with git tag versioning |
+| [docker-image](./docker-image) | Docker image with multi-arch builds |
 | [multi-ecosystem](./multi-ecosystem) | Rust + Node.js bindings |
 
 ## Quick Start

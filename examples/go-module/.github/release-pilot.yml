@@ -1,0 +1,13 @@
+# Release Pilot configuration for Go module
+
+packages:
+  - name: my-module
+    ecosystem: go
+    path: .
+
+version:
+  devRelease: true
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"

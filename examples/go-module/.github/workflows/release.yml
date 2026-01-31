@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Stable release every Monday at 9:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Release mode'
+        type: choice
+        options:
+          - stable
+          - dev
+        default: stable
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore(release):')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Determine release mode
+        id: mode
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "mode=stable" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            echo "mode=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          mode: ${{ steps.mode.outputs.mode }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

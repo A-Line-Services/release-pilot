@@ -40,7 +40,12 @@ import {
   type RegistryConfig,
 } from './ecosystems/base.js';
 import { CargoEcosystem } from './ecosystems/cargo.js';
+import { ComposerEcosystem } from './ecosystems/composer.js';
+import { CustomEcosystem } from './ecosystems/custom.js';
+import { DockerEcosystem } from './ecosystems/docker.js';
+import { GoEcosystem } from './ecosystems/go.js';
 import { NpmEcosystem } from './ecosystems/npm.js';
+import { PythonEcosystem } from './ecosystems/python.js';
 import { GitHubClient } from './github/client.js';
 import { extractReleaseLabels, getBumpTypeFromLabels } from './github/labels.js';
 import { filterPRsSinceDate, findLastStableRelease } from './github/releases.js';
@@ -125,9 +130,11 @@ function createRegistry(): EcosystemRegistry {
 
   registry.register(new NpmEcosystem());
   registry.register(new CargoEcosystem());
-  // TODO: Add more ecosystems as implemented
-  // registry.register(new PythonEcosystem());
-  // registry.register(new GoEcosystem());
+  registry.register(new PythonEcosystem());
+  registry.register(new GoEcosystem());
+  registry.register(new ComposerEcosystem());
+  registry.register(new DockerEcosystem());
+  registry.register(new CustomEcosystem());
   // registry.register(new ComposerEcosystem());
   // registry.register(new DockerEcosystem());
   // registry.register(new CustomEcosystem());

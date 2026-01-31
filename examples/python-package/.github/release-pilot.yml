@@ -1,0 +1,13 @@
+# Release Pilot configuration for Python package
+
+packages:
+  - name: my-package
+    ecosystem: python
+    path: .
+
+version:
+  devRelease: true
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"

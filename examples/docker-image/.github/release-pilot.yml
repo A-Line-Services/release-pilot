@@ -1,0 +1,27 @@
+# Release Pilot configuration for Docker image
+
+packages:
+  - name: my-app
+    ecosystem: docker
+    path: .
+    docker:
+      registry: ghcr.io
+      image: myorg/my-app
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+      tags:
+        - latest
+        - "{version}"
+        - "{major}.{minor}"
+      devTags:
+        - dev
+        - "{version}"
+
+version:
+  devRelease: true
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"
