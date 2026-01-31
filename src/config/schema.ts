@@ -325,6 +325,123 @@ export const VersionFilesConfig = a.object(
 export type VersionFilesConfigType = a.infer<typeof VersionFilesConfig>;
 
 // =============================================================================
+// Cleanup Configuration
+// =============================================================================
+
+/**
+ * Cleanup settings for a specific release type (dev, alpha, beta, rc, stable)
+ *
+ * Controls what artifacts to clean up and how many to retain.
+ * All fields are optional and default to false/disabled.
+ *
+ * The `all` field is a shorthand that expands to `tags: true, releases: true, published: true`.
+ * You can combine `all` with individual settings to opt out of specific cleanup types.
+ *
+ * @example
+ * ```yaml
+ * # Clean up all artifact types, keep last 10
+ * dev:
+ *   all: true
+ *   keep: 10
+ *
+ * # All except published packages
+ * alpha:
+ *   all: true
+ *   published: false
+ *   keep: 5
+ *
+ * # Granular control
+ * beta:
+ *   tags: true
+ *   releases: true
+ *   published: false
+ *   keep: 5
+ * ```
+ */
+export const CleanupTypeConfig = a.object(
+  {
+    /**
+     * Shorthand to enable cleanup for all artifact types (tags, releases, published).
+     * Individual settings (tags, releases, published) override this when specified.
+     */
+    all: a.optional(a.boolean()),
+
+    /** Clean up git tags for this release type (default: false) */
+    tags: a.optional(a.boolean()),
+
+    /** Clean up GitHub releases for this release type (default: false) */
+    releases: a.optional(a.boolean()),
+
+    /**
+     * Clean up published packages/images from registries (default: false)
+     * Note: Not all registries support deletion. Supported: npm, PyPI, Docker.
+     * Unsupported (will warn): crates.io (yank only), Go, Packagist.
+     */
+    published: a.optional(a.boolean()),
+
+    /**
+     * Number of releases to keep (default: 10)
+     * Set to 0 to remove all (use with caution!)
+     */
+    keep: a.optional(a.int32()),
+  },
+  { id: 'CleanupTypeConfig' }
+);
+export type CleanupTypeConfigType = a.infer<typeof CleanupTypeConfig>;
+
+/**
+ * Configuration for cleaning up old releases, tags, and published packages
+ *
+ * Cleanup is disabled by default. When enabled, you can configure cleanup
+ * behavior per release type (dev, alpha, beta, rc, stable).
+ *
+ * @example
+ * ```yaml
+ * cleanup:
+ *   enabled: true
+ *
+ *   dev:
+ *     all: true
+ *     keep: 10
+ *
+ *   alpha:
+ *     tags: true
+ *     releases: true
+ *     keep: 5
+ *
+ *   stable:
+ *     # Don't clean up stable releases (this is the default)
+ *     tags: false
+ *     releases: false
+ * ```
+ */
+export const CleanupConfig = a.object(
+  {
+    /** Enable cleanup globally (default: false). Must be true for any cleanup to occur. */
+    enabled: a.optional(a.boolean()),
+
+    /** Cleanup settings for dev releases (e.g., 1.0.0-dev.abc123) */
+    dev: a.optional(CleanupTypeConfig),
+
+    /** Cleanup settings for alpha releases (e.g., 1.0.0-alpha.1) */
+    alpha: a.optional(CleanupTypeConfig),
+
+    /** Cleanup settings for beta releases (e.g., 1.0.0-beta.1) */
+    beta: a.optional(CleanupTypeConfig),
+
+    /** Cleanup settings for release candidates (e.g., 1.0.0-rc.1) */
+    rc: a.optional(CleanupTypeConfig),
+
+    /** Cleanup settings for stable releases (e.g., 1.0.0) - use with caution! */
+    stable: a.optional(CleanupTypeConfig),
+  },
+  { id: 'CleanupConfig' }
+);
+export type CleanupConfigType = a.infer<typeof CleanupConfig>;
+
+// =============================================================================
+// Changelog Configuration
+// =============================================================================
 
 /**
  * Configuration for changelog generation (optional feature)
@@ -384,6 +501,9 @@ export const ReleasePilotConfig = a.object(
 
     /** Version file updates configuration */
     versionFiles: a.optional(VersionFilesConfig),
+
+    /** Cleanup configuration for old releases, tags, and published packages */
+    cleanup: a.optional(CleanupConfig),
   },
   {
     id: 'ReleasePilotConfig',

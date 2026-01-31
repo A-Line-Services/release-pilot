@@ -13,6 +13,8 @@ import { parse as parseYaml } from 'yaml';
 import type { BumpType } from '../core/version.js';
 import {
   type ChangelogConfigType,
+  type CleanupConfigType,
+  type CleanupTypeConfigType,
   type DockerConfigType,
   type GitConfigType,
   type GitHubReleaseConfigType,
@@ -140,6 +142,38 @@ export interface ResolvedVersionFilesConfig {
 }
 
 /**
+ * Cleanup settings for a specific release type with all defaults applied
+ */
+export interface ResolvedCleanupTypeConfig {
+  /** Whether to clean up git tags */
+  tags: boolean;
+  /** Whether to clean up GitHub releases */
+  releases: boolean;
+  /** Whether to clean up published packages from registries */
+  published: boolean;
+  /** Number of releases to keep */
+  keep: number;
+}
+
+/**
+ * Cleanup configuration with all defaults applied
+ */
+export interface ResolvedCleanupConfig {
+  /** Whether cleanup is enabled globally */
+  enabled: boolean;
+  /** Cleanup settings for dev releases */
+  dev: ResolvedCleanupTypeConfig;
+  /** Cleanup settings for alpha releases */
+  alpha: ResolvedCleanupTypeConfig;
+  /** Cleanup settings for beta releases */
+  beta: ResolvedCleanupTypeConfig;
+  /** Cleanup settings for release candidates */
+  rc: ResolvedCleanupTypeConfig;
+  /** Cleanup settings for stable releases */
+  stable: ResolvedCleanupTypeConfig;
+}
+
+/**
  * Complete configuration with all defaults applied
  */
 export interface ResolvedConfig {
@@ -152,6 +186,7 @@ export interface ResolvedConfig {
   githubRelease: ResolvedGitHubReleaseConfig;
   changelog: ResolvedChangelogConfig;
   versionFiles: ResolvedVersionFilesConfig;
+  cleanup: ResolvedCleanupConfig;
 }
 
 // =============================================================================
@@ -205,6 +240,22 @@ const DEFAULT_DOCKER: Omit<ResolvedDockerConfig, 'image'> = {
   tags: ['latest', '{version}'],
   devTags: ['dev', '{version}'],
   push: true,
+};
+
+const DEFAULT_CLEANUP_TYPE: ResolvedCleanupTypeConfig = {
+  tags: false,
+  releases: false,
+  published: false,
+  keep: 10,
+};
+
+const DEFAULT_CLEANUP: ResolvedCleanupConfig = {
+  enabled: false,
+  dev: { ...DEFAULT_CLEANUP_TYPE },
+  alpha: { ...DEFAULT_CLEANUP_TYPE },
+  beta: { ...DEFAULT_CLEANUP_TYPE },
+  rc: { ...DEFAULT_CLEANUP_TYPE },
+  stable: { ...DEFAULT_CLEANUP_TYPE, keep: 0 }, // Stable: keep all by default
 };
 
 // =============================================================================
@@ -274,6 +325,7 @@ export function applyDefaults(config: ReleasePilotConfigType): ResolvedConfig {
     githubRelease: applyGitHubReleaseDefaults(config.githubRelease),
     changelog: applyChangelogDefaults(config.changelog),
     versionFiles: applyVersionFilesDefaults(config.versionFiles),
+    cleanup: applyCleanupDefaults(config.cleanup),
   };
 }
 
@@ -395,5 +447,42 @@ function applyVersionFilesDefaults(
       pattern: f.pattern,
       replace: f.replace,
     })),
+  };
+}
+
+/**
+ * Apply defaults to cleanup type config
+ *
+ * The `all` field is a shorthand that expands to tags=true, releases=true, published=true.
+ * Individual settings override the `all` shorthand when specified.
+ */
+function applyCleanupTypeDefaults(
+  typeConfig: CleanupTypeConfigType | undefined,
+  defaults: ResolvedCleanupTypeConfig
+): ResolvedCleanupTypeConfig {
+  if (!typeConfig) {
+    return { ...defaults };
+  }
+
+  // If `all` is set, use it as the base for tags/releases/published
+  // Individual settings override `all` when explicitly specified
+  const allValue = typeConfig.all ?? false;
+
+  return {
+    tags: typeConfig.tags ?? (allValue || defaults.tags),
+    releases: typeConfig.releases ?? (allValue || defaults.releases),
+    published: typeConfig.published ?? (allValue || defaults.published),
+    keep: typeConfig.keep ?? defaults.keep,
+  };
+}
+
+function applyCleanupDefaults(cleanup?: CleanupConfigType): ResolvedCleanupConfig {
+  return {
+    enabled: cleanup?.enabled ?? DEFAULT_CLEANUP.enabled,
+    dev: applyCleanupTypeDefaults(cleanup?.dev, DEFAULT_CLEANUP.dev),
+    alpha: applyCleanupTypeDefaults(cleanup?.alpha, DEFAULT_CLEANUP.alpha),
+    beta: applyCleanupTypeDefaults(cleanup?.beta, DEFAULT_CLEANUP.beta),
+    rc: applyCleanupTypeDefaults(cleanup?.rc, DEFAULT_CLEANUP.rc),
+    stable: applyCleanupTypeDefaults(cleanup?.stable, DEFAULT_CLEANUP.stable),
   };
 }

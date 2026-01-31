@@ -15,3 +15,9 @@ version:
 
 git:
   floatingTags: true
+
+cleanup:
+  enabled: true
+  dev:
+    all: true
+    keep: 3

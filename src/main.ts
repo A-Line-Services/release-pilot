@@ -21,6 +21,7 @@ import {
   type ResolvedConfig,
   type ResolvedPackageConfig,
 } from './config/loader.js';
+import { runCleanup } from './core/cleanup.js';
 import {
   configureGitUser,
   createCommit,
@@ -456,6 +457,24 @@ export async function run(): Promise<void> {
           setTimeout(resolve, config.publish.delayBetweenPackages * 1000)
         );
       }
+    }
+  }
+
+  // Run cleanup of old releases/tags if enabled
+  if (config.cleanup.enabled) {
+    core.info('Running cleanup of old releases...');
+    const cleanupResult = await runCleanup(gh, config.cleanup, config.git.tagPrefix, {
+      cwd: process.cwd(),
+      dryRun: inputs.dryRun,
+      log: (msg) => core.info(msg),
+      warn: (msg) => core.warning(msg),
+      packages,
+      ecosystemRegistry: registry,
+      registryConfig,
+    });
+
+    if (cleanupResult.warnings.length > 0) {
+      core.info(`Cleanup completed with ${cleanupResult.warnings.length} warnings`);
     }
   }
 

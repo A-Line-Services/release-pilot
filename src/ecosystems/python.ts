@@ -22,6 +22,7 @@ import { BaseFileEcosystem, type EcosystemContext } from './base.js';
  */
 export class PythonEcosystem extends BaseFileEcosystem {
   readonly name = 'python';
+  readonly supportsUnpublish = true;
 
   constructor() {
     super({
@@ -109,5 +110,85 @@ export class PythonEcosystem extends BaseFileEcosystem {
     }
 
     return content;
+  }
+
+  /**
+   * Delete a specific version from PyPI
+   *
+   * Uses the PyPI JSON API to delete a release. Requires:
+   * - PYPI_TOKEN environment variable with API token
+   * - Token must have permissions to delete releases
+   *
+   * @param ctx - Ecosystem context
+   * @param version - Version to delete
+   * @returns true if deleted successfully
+   */
+  async unpublish(ctx: EcosystemContext, version: string): Promise<boolean> {
+    if (ctx.dryRun) {
+      ctx.log(`[dry-run] Would delete version ${version} from PyPI`);
+      return true;
+    }
+
+    // Get package name from pyproject.toml
+    const manifestPath = this.getManifestPath(ctx);
+    const { readFileSync } = await import('node:fs');
+    const content = readFileSync(manifestPath, 'utf-8');
+
+    // Extract package name
+    let packageName: string | null = null;
+
+    // Try [project] section first
+    const projectMatch = content.match(/\[project\][^[]*name\s*=\s*"([^"]+)"/s);
+    if (projectMatch?.[1]) {
+      packageName = projectMatch[1];
+    }
+
+    // Try [tool.poetry] section
+    if (!packageName) {
+      const poetryMatch = content.match(/\[tool\.poetry\][^[]*name\s*=\s*"([^"]+)"/s);
+      if (poetryMatch?.[1]) {
+        packageName = poetryMatch[1];
+      }
+    }
+
+    if (!packageName) {
+      ctx.log('Cannot delete from PyPI: package name not found in pyproject.toml');
+      return false;
+    }
+
+    // Get PyPI token from environment
+    const pypiToken = process.env.PYPI_TOKEN || process.env.TWINE_PASSWORD;
+    if (!pypiToken) {
+      ctx.log('Cannot delete from PyPI: PYPI_TOKEN environment variable not set');
+      return false;
+    }
+
+    try {
+      // PyPI API endpoint to delete a release
+      // POST https://pypi.org/manage/project/{project}/release/{version}/
+      // with _method=delete
+      const response = await fetch(
+        `https://pypi.org/manage/project/${packageName}/release/${version}/`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${pypiToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: '_method=delete&confirm_project_name=' + encodeURIComponent(packageName),
+        }
+      );
+
+      if (response.ok || response.status === 302) {
+        ctx.log(`Deleted ${packageName}@${version} from PyPI`);
+        return true;
+      }
+
+      ctx.log(`Failed to delete from PyPI: HTTP ${response.status}`);
+      return false;
+    } catch (error) {
+      ctx.log(`Failed to delete ${packageName}@${version} from PyPI: ${error}`);
+      return false;
+    }
   }
 }
