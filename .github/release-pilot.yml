@@ -2,12 +2,14 @@
 #
 # This action uses itself to manage its own releases.
 # GitHub Actions are "published" by pushing tags - the dist/ directory
-# is committed and action.yml references it.
+# is staged before release and included in the version commit.
 
 packages:
   - name: release-pilot
     ecosystem: custom
-    updateVersionFile: false
+    # Update VERSION file - this also triggers a commit which includes
+    # the staged dist/ directory (needed for the action to work)
+    updateVersionFile: true
     publish: false
 
 version:
