@@ -38,6 +38,7 @@ export interface DockerEcosystemContext extends EcosystemContext {
  */
 export class DockerEcosystem implements Ecosystem {
   readonly name = 'docker';
+  readonly supportsUnpublish = true;
 
   /**
    * Detect if this is a Docker project
@@ -189,5 +190,312 @@ export class DockerEcosystem implements Ecosystem {
       minor: match[2]!,
       patch: match[3]!,
     };
+  }
+
+  /**
+   * Delete a Docker image tag from the registry
+   *
+   * Supports:
+   * - GitHub Container Registry (ghcr.io)
+   * - Docker Hub (docker.io)
+   * - Google Container Registry (gcr.io)
+   * - AWS ECR (*.ecr.*.amazonaws.com)
+   *
+   * @param ctx - Ecosystem context
+   * @param version - Version/tag to delete
+   * @returns true if deleted successfully
+   */
+  async unpublish(ctx: EcosystemContext, version: string): Promise<boolean> {
+    const dockerCtx = ctx as DockerEcosystemContext;
+    const config = dockerCtx.docker;
+
+    if (!config) {
+      ctx.log('Cannot delete image: Docker configuration is required');
+      return false;
+    }
+
+    if (ctx.dryRun) {
+      ctx.log(`[dry-run] Would delete image tag ${config.image}:${version}`);
+      return true;
+    }
+
+    const registry = config.registry || 'docker.io';
+    const tag = version.replace(/^v/, ''); // Remove v prefix for tag
+
+    try {
+      // Route to appropriate registry handler
+      if (registry === 'ghcr.io') {
+        return await this.deleteFromGhcr(ctx, config.image, tag);
+      }
+
+      if (registry === 'docker.io') {
+        return await this.deleteFromDockerHub(ctx, config.image, tag, config);
+      }
+
+      if (registry.includes('gcr.io')) {
+        return await this.deleteFromGcr(ctx, registry, config.image, tag);
+      }
+
+      if (registry.includes('.ecr.') && registry.includes('.amazonaws.com')) {
+        return await this.deleteFromEcr(ctx, registry, config.image, tag);
+      }
+
+      // Generic OCI registry - try Docker Registry HTTP API V2
+      return await this.deleteFromGenericRegistry(ctx, registry, config.image, tag, config);
+    } catch (error) {
+      ctx.log(`Failed to delete ${config.image}:${tag}: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Delete image from GitHub Container Registry using gh CLI
+   */
+  private async deleteFromGhcr(
+    ctx: EcosystemContext,
+    image: string,
+    tag: string
+  ): Promise<boolean> {
+    const { exec } = await import('@actions/exec');
+
+    try {
+      // gh api -X DELETE /user/packages/container/{package_name}/versions/{version_id}
+      // First, we need to get the version ID for the tag
+      // This requires listing versions and finding the one with our tag
+
+      // For ghcr.io, the image format is: owner/package-name
+      const parts = image.split('/');
+      if (parts.length < 2) {
+        ctx.log('Invalid ghcr.io image format. Expected: owner/package-name');
+        return false;
+      }
+
+      const owner = parts[0];
+      const packageName = parts.slice(1).join('/');
+
+      // Use gh CLI to delete the package version
+      // Note: This requires the package to be owned by the authenticated user/org
+      await exec(
+        'gh',
+        [
+          'api',
+          '-X',
+          'DELETE',
+          `/users/${owner}/packages/container/${encodeURIComponent(packageName)}/versions`,
+          '-f',
+          `tag=${tag}`,
+        ],
+        { cwd: ctx.path }
+      );
+
+      ctx.log(`Deleted ghcr.io/${image}:${tag}`);
+      return true;
+    } catch (error) {
+      // Try organization endpoint if user endpoint fails
+      try {
+        const parts = image.split('/');
+        const org = parts[0];
+        const packageName = parts.slice(1).join('/');
+
+        await exec(
+          'gh',
+          [
+            'api',
+            '-X',
+            'DELETE',
+            `/orgs/${org}/packages/container/${encodeURIComponent(packageName)}/versions`,
+            '-f',
+            `tag=${tag}`,
+          ],
+          { cwd: ctx.path }
+        );
+
+        ctx.log(`Deleted ghcr.io/${image}:${tag}`);
+        return true;
+      } catch {
+        ctx.log(`Failed to delete from ghcr.io: ${error}`);
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Delete image from Docker Hub using the Hub API
+   */
+  private async deleteFromDockerHub(
+    ctx: EcosystemContext,
+    image: string,
+    tag: string,
+    config: ResolvedDockerConfig
+  ): Promise<boolean> {
+    const username = config.username;
+    const password = config.password;
+
+    if (!username || !password) {
+      ctx.log('Cannot delete from Docker Hub: username and password required');
+      return false;
+    }
+
+    try {
+      // Get JWT token
+      const loginResponse = await fetch('https://hub.docker.com/v2/users/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!loginResponse.ok) {
+        ctx.log('Failed to authenticate with Docker Hub');
+        return false;
+      }
+
+      const { token } = (await loginResponse.json()) as { token: string };
+
+      // Delete the tag
+      // DELETE https://hub.docker.com/v2/repositories/{namespace}/{repository}/tags/{tag}/
+      const deleteResponse = await fetch(
+        `https://hub.docker.com/v2/repositories/${image}/tags/${tag}/`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (deleteResponse.ok || deleteResponse.status === 204) {
+        ctx.log(`Deleted docker.io/${image}:${tag}`);
+        return true;
+      }
+
+      ctx.log(`Failed to delete from Docker Hub: HTTP ${deleteResponse.status}`);
+      return false;
+    } catch (error) {
+      ctx.log(`Failed to delete from Docker Hub: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Delete image from Google Container Registry using gcloud
+   */
+  private async deleteFromGcr(
+    ctx: EcosystemContext,
+    registry: string,
+    image: string,
+    tag: string
+  ): Promise<boolean> {
+    const { exec } = await import('@actions/exec');
+
+    try {
+      const fullImage = `${registry}/${image}:${tag}`;
+      await exec(
+        'gcloud',
+        ['container', 'images', 'delete', fullImage, '--quiet', '--force-delete-tags'],
+        {
+          cwd: ctx.path,
+        }
+      );
+
+      ctx.log(`Deleted ${fullImage}`);
+      return true;
+    } catch (error) {
+      ctx.log(`Failed to delete from GCR: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Delete image from AWS ECR using aws CLI
+   */
+  private async deleteFromEcr(
+    ctx: EcosystemContext,
+    registry: string,
+    image: string,
+    tag: string
+  ): Promise<boolean> {
+    const { exec } = await import('@actions/exec');
+
+    try {
+      // Extract region from registry URL
+      // Format: {account}.dkr.ecr.{region}.amazonaws.com
+      const regionMatch = registry.match(/\.ecr\.([^.]+)\.amazonaws\.com/);
+      const region = regionMatch?.[1];
+
+      const args = [
+        'ecr',
+        'batch-delete-image',
+        '--repository-name',
+        image,
+        '--image-ids',
+        `imageTag=${tag}`,
+      ];
+
+      if (region) {
+        args.push('--region', region);
+      }
+
+      await exec('aws', args, { cwd: ctx.path });
+
+      ctx.log(`Deleted ${registry}/${image}:${tag}`);
+      return true;
+    } catch (error) {
+      ctx.log(`Failed to delete from ECR: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Delete image from a generic OCI registry using Docker Registry HTTP API V2
+   */
+  private async deleteFromGenericRegistry(
+    ctx: EcosystemContext,
+    registry: string,
+    image: string,
+    tag: string,
+    config: ResolvedDockerConfig
+  ): Promise<boolean> {
+    try {
+      // Get manifest digest first
+      const manifestUrl = `https://${registry}/v2/${image}/manifests/${tag}`;
+      const headers: Record<string, string> = {
+        Accept: 'application/vnd.docker.distribution.manifest.v2+json',
+      };
+
+      // Add auth if provided
+      if (config.username && config.password) {
+        const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
+        headers.Authorization = `Basic ${auth}`;
+      }
+
+      const manifestResponse = await fetch(manifestUrl, { headers });
+
+      if (!manifestResponse.ok) {
+        ctx.log(`Failed to get manifest for ${image}:${tag}`);
+        return false;
+      }
+
+      const digest = manifestResponse.headers.get('Docker-Content-Digest');
+      if (!digest) {
+        ctx.log('No digest found in manifest response');
+        return false;
+      }
+
+      // Delete by digest
+      const deleteUrl = `https://${registry}/v2/${image}/manifests/${digest}`;
+      const deleteResponse = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (deleteResponse.ok || deleteResponse.status === 202) {
+        ctx.log(`Deleted ${registry}/${image}:${tag}`);
+        return true;
+      }
+
+      ctx.log(`Failed to delete from registry: HTTP ${deleteResponse.status}`);
+      return false;
+    } catch (error) {
+      ctx.log(`Failed to delete from registry: ${error}`);
+      return false;
+    }
   }
 }

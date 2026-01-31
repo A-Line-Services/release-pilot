@@ -123,6 +123,33 @@ export interface Ecosystem {
    * await ecosystem.postVersionUpdate?.(ctx);
    */
   postVersionUpdate?(ctx: EcosystemContext): Promise<void>;
+
+  /**
+   * Unpublish/delete a specific version from the registry (optional)
+   *
+   * Not all ecosystems support unpublishing:
+   * - npm: Supported (within 72 hours of publish)
+   * - PyPI: Supported (project owners can delete)
+   * - Docker: Supported (via registry API)
+   * - Cargo: Not supported (yank only, does not delete)
+   * - Go: Not applicable (uses git tags)
+   * - Composer: Not supported programmatically
+   *
+   * @param ctx - Ecosystem context
+   * @param version - Version to unpublish
+   * @returns true if unpublished, false if not supported or failed
+   *
+   * @example
+   * const success = await ecosystem.unpublish?.(ctx, '1.0.0-dev.abc123');
+   */
+  unpublish?(ctx: EcosystemContext, version: string): Promise<boolean>;
+
+  /**
+   * Check if this ecosystem supports unpublishing
+   *
+   * @returns true if unpublish is supported, false otherwise
+   */
+  readonly supportsUnpublish?: boolean;
 }
 
 /**

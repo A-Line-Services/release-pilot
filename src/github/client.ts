@@ -15,6 +15,7 @@ type Octokit = ReturnType<typeof github.getOctokit>;
  * Simplified release info
  */
 export interface ReleaseInfo {
+  id: number;
   tagName: string;
   publishedAt: string;
   prerelease: boolean;
@@ -90,6 +91,7 @@ export class GitHubClient {
     });
 
     return releases.map((r) => ({
+      id: r.id,
       tagName: r.tag_name,
       publishedAt: r.published_at || '',
       prerelease: r.prerelease,
@@ -148,6 +150,19 @@ export class GitHubClient {
       htmlUrl: release.html_url,
       tagName: release.tag_name,
     };
+  }
+
+  /**
+   * Delete a GitHub release by ID
+   *
+   * @param releaseId - The release ID to delete
+   */
+  async deleteRelease(releaseId: number): Promise<void> {
+    await this.octokit.rest.repos.deleteRelease({
+      owner: this.owner,
+      repo: this.repo,
+      release_id: releaseId,
+    });
   }
 
   /**

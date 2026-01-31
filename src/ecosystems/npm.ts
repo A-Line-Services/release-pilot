@@ -26,6 +26,7 @@ import { BaseFileEcosystem, type EcosystemContext } from './base.js';
  */
 export class NpmEcosystem extends BaseFileEcosystem {
   readonly name = 'npm';
+  readonly supportsUnpublish = true;
 
   constructor() {
     super({
@@ -140,6 +141,54 @@ export class NpmEcosystem extends BaseFileEcosystem {
 
     writeFileSync(npmrcPath, npmrcContent);
     ctx.log(`Configured .npmrc for ${registryHost}`);
+  }
+
+  /**
+   * Unpublish a specific version from npm
+   *
+   * Note: npm only allows unpublishing within 72 hours of publish.
+   * After that, the version is locked and cannot be removed.
+   *
+   * @param ctx - Ecosystem context
+   * @param version - Version to unpublish
+   * @returns true if unpublished successfully
+   */
+  async unpublish(ctx: EcosystemContext, version: string): Promise<boolean> {
+    if (ctx.dryRun) {
+      ctx.log(`[dry-run] Would unpublish version ${version}`);
+      return true;
+    }
+
+    // Configure .npmrc if token is provided
+    if (ctx.registry?.npmToken) {
+      await this.configureNpmrc(ctx);
+    }
+
+    // Get package name from package.json
+    const manifestPath = this.getManifestPath(ctx);
+    const { readFileSync } = await import('node:fs');
+    const content = readFileSync(manifestPath, 'utf-8');
+    const pkg = JSON.parse(content);
+    const packageName = pkg.name;
+
+    if (!packageName) {
+      ctx.log('Cannot unpublish: package name not found in package.json');
+      return false;
+    }
+
+    const { exec } = await import('@actions/exec');
+
+    try {
+      await exec('npm', ['unpublish', `${packageName}@${version}`, '--force'], {
+        cwd: ctx.path,
+      });
+      ctx.log(`Unpublished ${packageName}@${version} from npm`);
+      return true;
+    } catch (error) {
+      // npm unpublish fails if version is older than 72 hours or doesn't exist
+      ctx.log(`Failed to unpublish ${packageName}@${version}: ${error}`);
+      return false;
+    }
   }
 
   /**

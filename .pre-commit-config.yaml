@@ -5,19 +5,19 @@ repos:
         name: biome check
         entry: bunx biome check --write
         language: system
-        types_or: [javascript, typescript, json]
+        types_or: [javascript, ts, tsx, json]
         pass_filenames: false
 
       - id: typecheck
         name: typecheck
         entry: bun run typecheck
         language: system
-        types: [typescript]
+        types_or: [ts, tsx]
         pass_filenames: false
 
       - id: test
         name: test
         entry: bun test
         language: system
-        types: [typescript]
+        types_or: [ts, tsx]
         pass_filenames: false
