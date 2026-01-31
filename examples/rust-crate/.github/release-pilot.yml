@@ -1,0 +1,13 @@
+# Release Pilot configuration for Rust crate
+
+packages:
+  - name: my-crate
+    ecosystem: cargo
+    path: .
+
+version:
+  devRelease: true
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"

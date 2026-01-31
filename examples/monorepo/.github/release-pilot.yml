@@ -1,0 +1,31 @@
+# Release Pilot configuration for NPM monorepo
+
+packages:
+  - name: core
+    ecosystem: npm
+    path: ./packages/core
+
+  - name: utils
+    ecosystem: npm
+    path: ./packages/utils
+
+  - name: cli
+    ecosystem: npm
+    path: ./packages/cli
+
+# Release in dependency order
+releaseOrder:
+  - core
+  - utils
+  - cli
+
+version:
+  devRelease: true
+
+publish:
+  # Wait for npm registry to index each package
+  delayBetweenPackages: 30
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"

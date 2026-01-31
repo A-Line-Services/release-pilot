@@ -308,6 +308,15 @@ changelog:
   file: string            # Changelog file (default: CHANGELOG.md)
 ```
 
+## Examples
+
+See the [examples](./examples) directory for complete configurations:
+
+- [Simple NPM](./examples/simple-npm) - Single package with auto-detection
+- [Monorepo](./examples/monorepo) - NPM monorepo with ordered releases
+- [Rust Crate](./examples/rust-crate) - Cargo crate for crates.io
+- [Multi-Ecosystem](./examples/multi-ecosystem) - Rust + Node.js bindings
+
 ## Development
 
 ```bash

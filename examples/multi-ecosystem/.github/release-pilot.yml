@@ -1,0 +1,26 @@
+# Release Pilot configuration for multi-ecosystem project
+# Rust crate + Node.js bindings
+
+packages:
+  - name: core
+    ecosystem: cargo
+    path: .
+
+  - name: node-bindings
+    ecosystem: npm
+    path: ./bindings/node
+
+# Rust first, then Node bindings
+releaseOrder:
+  - core
+  - node-bindings
+
+version:
+  devRelease: true
+
+publish:
+  delayBetweenPackages: 30
+
+git:
+  tagPrefix: v
+  commitMessage: "chore(release): v{version}"
