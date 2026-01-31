@@ -268,6 +268,12 @@ changelog:
 
 versionFiles:
   enabled: boolean        # Enable version file updates (default: false)
+  updateOn:               # Which release types trigger updates
+    stable: boolean       # Update on stable releases (default: true)
+    dev: boolean          # Update on dev releases (default: false)
+    alpha: boolean        # Update on alpha releases (default: false)
+    beta: boolean         # Update on beta releases (default: false)
+    rc: boolean           # Update on release candidates (default: false)
   files:                  # List of files to update
     - file: string        # File path relative to repo root
       pattern: string     # Regex pattern to match
@@ -287,6 +293,20 @@ versionFiles:
       pattern: 'uses: org/action@v[0-9.]+'
       replace: 'uses: org/action@v{version}'
     - file: docs/installation.md
+      pattern: 'version: [0-9.]+'
+      replace: 'version: {version}'
+```
+
+By default, version files are only updated on stable releases. To also update on prereleases:
+
+```yaml
+versionFiles:
+  enabled: true
+  updateOn:
+    stable: true
+    rc: true      # Also update for release candidates
+  files:
+    - file: README.md
       pattern: 'version: [0-9.]+'
       replace: 'version: {version}'
 ```

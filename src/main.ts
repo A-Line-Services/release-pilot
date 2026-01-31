@@ -20,6 +20,7 @@ import {
   loadConfig,
   type ResolvedConfig,
   type ResolvedPackageConfig,
+  type ResolvedVersionFilesUpdateOnConfig,
 } from './config/loader.js';
 import { runCleanup } from './core/cleanup.js';
 import {
@@ -365,7 +366,19 @@ export async function run(): Promise<void> {
   }
 
   // Update version references in configured files (README, docs, etc.)
-  if (config.versionFiles.enabled && config.versionFiles.files.length > 0) {
+  // Determine the release type for updateOn check
+  const releaseType: keyof ResolvedVersionFilesUpdateOnConfig = prerelease
+    ? (prerelease as 'alpha' | 'beta' | 'rc')
+    : inputs.mode === 'dev'
+      ? 'dev'
+      : 'stable';
+
+  const shouldUpdateVersionFiles =
+    config.versionFiles.enabled &&
+    config.versionFiles.files.length > 0 &&
+    config.versionFiles.updateOn[releaseType];
+
+  if (shouldUpdateVersionFiles) {
     core.info('Updating version references in files...');
     const versionFileResults = updateVersionFiles(config.versionFiles.files, newVersion, {
       cwd: process.cwd(),
@@ -383,6 +396,10 @@ export async function run(): Promise<void> {
         core.warning(`Failed to update ${result.file}: ${result.error}`);
       }
     }
+  } else if (config.versionFiles.enabled && config.versionFiles.files.length > 0) {
+    core.info(
+      `Skipping version file updates for ${releaseType} release (updateOn.${releaseType}: false)`
+    );
   }
 
   // Stage and commit version changes
