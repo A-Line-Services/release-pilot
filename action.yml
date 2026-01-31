@@ -1,0 +1,68 @@
+name: 'Release Pilot'
+description: 'Framework-agnostic release automation with multi-package and multi-ecosystem support'
+author: 'A-Line Services'
+
+branding:
+  icon: 'package'
+  color: 'blue'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access and pushing changes'
+    required: true
+    default: ${{ github.token }}
+
+  config-file:
+    description: 'Path to release-pilot config file'
+    required: false
+    default: '.github/release-pilot.yml'
+
+  mode:
+    description: 'Release mode: stable (full release), dev (pre-release), or check (dry-run report)'
+    required: false
+    default: 'stable'
+
+  dry-run:
+    description: 'Run without making any changes (useful for testing)'
+    required: false
+    default: 'false'
+
+  dev-suffix:
+    description: 'Suffix for dev releases (e.g., dev, nightly, alpha, beta, rc)'
+    required: false
+    default: 'dev'
+
+  packages:
+    description: 'JSON array of package configs (alternative to config file)'
+    required: false
+
+  default-bump:
+    description: 'Default version bump when no release label is found (major, minor, patch)'
+    required: false
+    default: 'patch'
+
+outputs:
+  version:
+    description: 'The new version that was released'
+
+  previous-version:
+    description: 'The previous version before the release'
+
+  bump-type:
+    description: 'The version bump type that was applied (major, minor, patch)'
+
+  released-packages:
+    description: 'JSON array of package names that were released'
+
+  skipped:
+    description: 'Whether the release was skipped (true/false)'
+
+  release-url:
+    description: 'URL of the created GitHub release (if any)'
+
+  tag:
+    description: 'The git tag that was created'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

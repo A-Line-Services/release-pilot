@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Release mode'
+        type: choice
+        options:
+          - stable
+          - dev
+        default: stable
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    # Skip if this is a version bump commit
+    if: "!contains(github.event.head_commit.message, 'chore(release):')"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run tests
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
+      # Use ourselves for releasing!
+      - name: Release
+        uses: ./
+        with:
+          mode: ${{ github.event.inputs.mode || 'dev' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
