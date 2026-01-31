@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+  schedule:
+    # Every Monday at 9:00 UTC
+    - cron: '0 9 * * 1'
   workflow_dispatch:
     inputs:
       mode:
@@ -46,9 +49,20 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Determine release mode
+        id: mode
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "mode=stable" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            echo "mode=dev" >> $GITHUB_OUTPUT
+          fi
+
       # Use ourselves for releasing!
       - name: Release
         uses: ./
         with:
-          mode: ${{ github.event.inputs.mode || 'dev' }}
+          mode: ${{ steps.mode.outputs.mode }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
