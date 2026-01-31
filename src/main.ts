@@ -22,6 +22,7 @@ import {
   type ResolvedPackageConfig,
   type ResolvedVersionFilesUpdateOnConfig,
 } from './config/loader.js';
+import { type ChangelogPR, updateChangelog } from './core/changelog.js';
 import { runCleanup } from './core/cleanup.js';
 import {
   configureGitUser,
@@ -400,6 +401,37 @@ export async function run(): Promise<void> {
     core.info(
       `Skipping version file updates for ${releaseType} release (updateOn.${releaseType}: false)`
     );
+  }
+
+  // Generate changelog if enabled
+  if (config.changelog.enabled) {
+    core.info('Generating changelog...');
+
+    // Convert PR info to changelog format
+    const changelogPRs: ChangelogPR[] = recentPRs.map((pr) => {
+      // Find the full PR info from the original list
+      const fullPR = mergedPRs.find((p) => p.number === pr.number);
+      return {
+        number: pr.number,
+        title: fullPR?.title ?? `PR #${pr.number}`,
+        author: fullPR?.author ?? undefined,
+        labels: pr.labels,
+      };
+    });
+
+    const changelogResult = updateChangelog(config.changelog, newVersion, changelogPRs, {
+      cwd: process.cwd(),
+      dryRun: inputs.dryRun,
+      log: (msg) => core.info(msg),
+      repoOwner: gh.getOwner(),
+      repoName: gh.getRepo(),
+    });
+
+    if (changelogResult.error) {
+      core.warning(`Changelog generation failed: ${changelogResult.error}`);
+    } else if (changelogResult.updated) {
+      allVersionFiles.push(config.changelog.file);
+    }
   }
 
   // Stage and commit version changes

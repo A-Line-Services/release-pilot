@@ -24,6 +24,11 @@ cleanup:
     all: true
     keep: 3
 
+# Generate CHANGELOG.md from merged PRs
+changelog:
+  enabled: true
+  file: CHANGELOG.md
+
 # Keep version references up to date in README and examples
 versionFiles:
   enabled: true

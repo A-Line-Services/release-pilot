@@ -490,9 +490,11 @@ export type CleanupConfigType = a.infer<typeof CleanupConfig>;
 // =============================================================================
 
 /**
- * Configuration for changelog generation (optional feature)
+ * Configuration for changelog generation
  *
- * TODO: Implement changelog generation as a pluggable feature
+ * Generates a CHANGELOG.md file from merged pull requests.
+ * PRs are categorized by labels (feat, fix, docs, chore, etc.)
+ * or by conventional commit prefixes in their titles.
  */
 export const ChangelogConfig = a.object(
   {
