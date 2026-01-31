@@ -6,8 +6,8 @@
  * @module ecosystems/npm
  */
 
-import { existsSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { BaseFileEcosystem, type EcosystemContext } from './base.js';
 
 /**
@@ -116,7 +116,7 @@ export class NpmEcosystem extends BaseFileEcosystem {
     const pkg = JSON.parse(content);
     const indent = this.detectIndent(content);
     pkg.version = version;
-    return JSON.stringify(pkg, null, indent) + '\n';
+    return `${JSON.stringify(pkg, null, indent)}\n`;
   }
 
   /**

@@ -4,7 +4,7 @@
  * Handles extracting release bump types from PR labels.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
   extractReleaseLabels,
   getBumpTypeFromLabels,

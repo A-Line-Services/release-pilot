@@ -4,12 +4,12 @@
  * Handles finding releases and PRs since last release.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
-  findLastStableRelease,
   filterPRsSinceDate,
-  type Release,
+  findLastStableRelease,
   type PullRequestWithMergeInfo,
+  type Release,
 } from '../../../src/github/releases.js';
 
 describe('GitHub releases', () => {

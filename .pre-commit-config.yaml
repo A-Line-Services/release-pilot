@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome check
+        entry: bunx biome check --write
+        language: system
+        types_or: [javascript, typescript, json]
+        pass_filenames: false
+
+      - id: typecheck
+        name: typecheck
+        entry: bun run typecheck
+        language: system
+        types: [typescript]
+        pass_filenames: false
+
+      - id: test
+        name: test
+        entry: bun test
+        language: system
+        types: [typescript]
+        pass_filenames: false

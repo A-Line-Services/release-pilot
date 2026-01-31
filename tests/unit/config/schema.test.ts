@@ -8,15 +8,15 @@
  * contribution to @arrirpc/schema is merged.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { a } from '@arrirpc/schema';
 import {
-  ReleasePilotConfig,
-  PackageConfig,
   DockerConfig,
   EcosystemType,
-  type ReleasePilotConfigType,
+  PackageConfig,
   type PackageConfigType,
+  ReleasePilotConfig,
+  type ReleasePilotConfigType,
 } from '../../../src/config/schema.js';
 
 describe('config schema', () => {

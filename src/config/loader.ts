@@ -7,22 +7,22 @@
  * @module config/loader
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { parse as parseYaml } from 'yaml';
+import { existsSync, readFileSync } from 'node:fs';
 import { a } from '@arrirpc/schema';
+import { parse as parseYaml } from 'yaml';
+import type { BumpType } from '../core/version.js';
 import {
+  type ChangelogConfigType,
+  type DockerConfigType,
+  type GitConfigType,
+  type GitHubReleaseConfigType,
+  type LabelsConfigType,
+  type PackageConfigType,
+  type PublishConfigType,
   ReleasePilotConfig,
   type ReleasePilotConfigType,
-  type PackageConfigType,
-  type DockerConfigType,
-  type LabelsConfigType,
   type VersionConfigType,
-  type GitConfigType,
-  type PublishConfigType,
-  type GitHubReleaseConfigType,
-  type ChangelogConfigType,
 } from './schema.js';
-import type { BumpType } from '../core/version.js';
 
 // =============================================================================
 // Resolved Config Types (with all defaults applied)

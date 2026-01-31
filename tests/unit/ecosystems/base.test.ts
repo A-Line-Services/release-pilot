@@ -2,14 +2,14 @@
  * Tests for ecosystem base interface and registry
  */
 
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
-  EcosystemRegistry,
   BaseFileEcosystem,
   type Ecosystem,
   type EcosystemContext,
+  EcosystemRegistry,
 } from '../../../src/ecosystems/base.js';
 
 const TEST_DIR = join(import.meta.dir, '../../fixtures/base-test');
@@ -87,7 +87,7 @@ class TestFileEcosystem extends BaseFileEcosystem {
   protected updateVersion(content: string, version: string): string {
     const data = JSON.parse(content);
     data.version = version;
-    return JSON.stringify(data, null, 2) + '\n';
+    return `${JSON.stringify(data, null, 2)}\n`;
   }
 }
 

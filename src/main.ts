@@ -13,37 +13,37 @@
  * @module main
  */
 
+import { existsSync } from 'node:fs';
 import * as core from '@actions/core';
-import { existsSync } from 'fs';
 import {
-  loadConfig,
   applyDefaults,
+  loadConfig,
   type ResolvedConfig,
   type ResolvedPackageConfig,
 } from './config/loader.js';
-import { bumpVersion, createDevVersion, type BumpType } from './core/version.js';
 import {
-  formatCommitMessage,
-  formatTag,
-  parseTagVersion,
   configureGitUser,
-  stageFiles,
   createCommit,
   createTag,
-  pushToRemote,
-  getShortSha,
+  formatCommitMessage,
+  formatTag,
   type GitOptions,
+  getShortSha,
+  parseTagVersion,
+  pushToRemote,
+  stageFiles,
 } from './core/git.js';
-import { findLastStableRelease, filterPRsSinceDate } from './github/releases.js';
-import { extractReleaseLabels, getBumpTypeFromLabels } from './github/labels.js';
-import { GitHubClient } from './github/client.js';
+import { type BumpType, bumpVersion, createDevVersion } from './core/version.js';
 import {
-  EcosystemRegistry,
   type EcosystemContext,
+  EcosystemRegistry,
   type RegistryConfig,
 } from './ecosystems/base.js';
-import { NpmEcosystem } from './ecosystems/npm.js';
 import { CargoEcosystem } from './ecosystems/cargo.js';
+import { NpmEcosystem } from './ecosystems/npm.js';
+import { GitHubClient } from './github/client.js';
+import { extractReleaseLabels, getBumpTypeFromLabels } from './github/labels.js';
+import { filterPRsSinceDate, findLastStableRelease } from './github/releases.js';
 
 /**
  * Action input configuration

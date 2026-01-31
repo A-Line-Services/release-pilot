@@ -2,11 +2,11 @@
  * Tests for npm ecosystem implementation
  */
 
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { NpmEcosystem } from '../../../src/ecosystems/npm.js';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { EcosystemContext } from '../../../src/ecosystems/base.js';
+import { NpmEcosystem } from '../../../src/ecosystems/npm.js';
 
 const TEST_DIR = join(import.meta.dir, '../../fixtures/npm-test');
 

@@ -4,10 +4,10 @@
  * Tests YAML parsing, validation, and default value application.
  */
 
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { mkdirSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
-import { loadConfig, applyDefaults } from '../../../src/config/loader.js';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { applyDefaults, loadConfig } from '../../../src/config/loader.js';
 
 const TEST_DIR = join(import.meta.dir, '../../fixtures/configs');
 

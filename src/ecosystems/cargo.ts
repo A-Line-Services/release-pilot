@@ -7,8 +7,8 @@
  * @module ecosystems/cargo
  */
 
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { BaseFileEcosystem, type EcosystemContext } from './base.js';
 
 /**
@@ -113,12 +113,12 @@ export class CargoEcosystem extends BaseFileEcosystem {
     // Check if using workspace versioning
     if (content.includes('[workspace.package]')) {
       // Update workspace version
-      const wsRegex = new RegExp('(\\[workspace\\.package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
+      const wsRegex = /(\[workspace\.package\][^[]*version\s*=\s*)"[^"]*"/s;
       return content.replace(wsRegex, `$1"${version}"`);
     }
 
     // Update package version
-    const pkgRegex = new RegExp('(\\[package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
+    const pkgRegex = /(\[package\][^[]*version\s*=\s*)"[^"]*"/s;
     return content.replace(pkgRegex, `$1"${version}"`);
   }
 
@@ -126,7 +126,7 @@ export class CargoEcosystem extends BaseFileEcosystem {
    * Extract version from [workspace.package] section
    */
   private extractWorkspaceVersion(content: string): string | null {
-    const regex = new RegExp('\\[workspace\\.package\\][^\\[]*version\\s*=\\s*"([^"]+)"', 's');
+    const regex = /\[workspace\.package\][^[]*version\s*=\s*"([^"]+)"/s;
     const match = content.match(regex);
     return match?.[1] ?? null;
   }
@@ -136,13 +136,13 @@ export class CargoEcosystem extends BaseFileEcosystem {
    */
   private extractPackageVersion(content: string): string | null {
     // First check if version uses workspace inheritance
-    const wsInheritRegex = new RegExp('\\[package\\][^\\[]*version\\.workspace\\s*=\\s*true', 's');
+    const wsInheritRegex = /\[package\][^[]*version\.workspace\s*=\s*true/s;
     if (content.match(wsInheritRegex)) {
       // Fall back to workspace version
       return this.extractWorkspaceVersion(content);
     }
 
-    const regex = new RegExp('\\[package\\][^\\[]*version\\s*=\\s*"([^"]+)"', 's');
+    const regex = /\[package\][^[]*version\s*=\s*"([^"]+)"/s;
     const match = content.match(regex);
     return match?.[1] ?? null;
   }

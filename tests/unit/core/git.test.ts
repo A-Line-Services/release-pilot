@@ -5,7 +5,7 @@
  * so these tests focus on the utility functions and mock exec calls.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { formatCommitMessage, formatTag, parseTagVersion } from '../../../src/core/git.js';
 
 describe('git utilities', () => {

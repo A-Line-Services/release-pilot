@@ -8,15 +8,15 @@
  * - Determining the highest bump type from multiple labels
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
-  parseVersion,
+  type BumpType,
   bumpVersion,
+  compareVersions,
   createDevVersion,
   getHighestBump,
   isPrerelease,
-  compareVersions,
-  type BumpType,
+  parseVersion,
 } from '../../../src/core/version.js';
 
 describe('version utilities', () => {
