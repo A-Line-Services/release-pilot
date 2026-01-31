@@ -1,6 +1,16 @@
-# Release Pilot
+<p align="center">
+  <img src=".docs/assets/release-pilot.svg" alt="Release Pilot" width="600">
+</p>
 
-Framework-agnostic release automation GitHub Action with multi-package and multi-ecosystem support.
+<p align="center">
+  Framework-agnostic release automation GitHub Action with multi-package and multi-ecosystem support.
+</p>
+
+<p align="center">
+  <a href="https://github.com/a-line-services/release-pilot/actions"><img src="https://github.com/a-line-services/release-pilot/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/a-line-services/release-pilot/releases"><img src="https://img.shields.io/github/v/release/a-line-services/release-pilot" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/a-line-services/release-pilot" alt="License"></a>
+</p>
 
 ## Features
 
