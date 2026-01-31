@@ -353,7 +353,7 @@ bun run all
 
 ## License
 
-MIT
+GPL-3.0
 
 ## Contributing
 
