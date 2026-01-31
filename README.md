@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".docs/assets/release-pilot.svg" alt="Release Pilot" width="600">
+  <img src="docs/assets/release-pilot.svg" alt="Release Pilot" width="600">
 </p>
 
 <p align="center">

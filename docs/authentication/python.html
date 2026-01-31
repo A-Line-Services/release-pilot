@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Python Authentication - Release Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/release-pilot-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav><a href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Back to Documentation</a></nav>
+    
+    <h1>
+      <img src="https://www.python.org/static/favicon.ico" alt="Python">
+      Python Authentication
+    </h1>
+    <p class="subtitle">Publish packages to PyPI</p>
+
+    <h2>Option 1: Trusted Publishing (OIDC)</h2>
+    <div class="note recommended">
+      <div class="note-title">Recommended</div>
+      No secrets needed! PyPI authenticates directly with GitHub Actions via OIDC.
+    </div>
+    
+    <h3>Setup on PyPI</h3>
+    <ol>
+      <li>Go to your project on <a href="https://pypi.org">pypi.org</a></li>
+      <li>Navigate to Settings &rarr; Publishing</li>
+      <li>Add a new trusted publisher:
+        <ul>
+          <li>Owner: <code>your-org</code></li>
+          <li>Repository: <code>your-repo</code></li>
+          <li>Workflow: <code>release.yml</code></li>
+          <li>Environment: (leave blank or use <code>release</code>)</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>Workflow Configuration</h3>
+    <pre><code>permissions:
+  contents: write
+  id-token: write  # Required for trusted publishing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h2>Option 2: API Token</h2>
+    <p>If you can't use trusted publishing, use an API token:</p>
+    
+    <h3>Getting a PyPI Token</h3>
+    <ol>
+      <li>Go to <a href="https://pypi.org/manage/account/token/">pypi.org/manage/account/token</a></li>
+      <li>Create a token scoped to your project</li>
+      <li>Add it as <code>PYPI_TOKEN</code> secret in your repo</li>
+    </ol>
+
+    <h3>Using with uv</h3>
+    <pre><code>- uses: astral-sh/setup-uv@v4
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+  env:
+    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}</code></pre>
+
+    <h3>Using with twine</h3>
+    <pre><code>- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+
+- run: pip install build twine
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+  env:
+    TWINE_USERNAME: __token__
+    TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}</code></pre>
+
+    <h2>TestPyPI</h2>
+    <p>To test publishing before going to production PyPI:</p>
+    <pre><code>env:
+  UV_PUBLISH_URL: https://test.pypi.org/legacy/
+  UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}</code></pre>
+
+    <h2>Private Registries</h2>
+    <p>For private PyPI registries (Artifactory, DevPI, etc.):</p>
+    <pre><code>env:
+  UV_PUBLISH_URL: https://pypi.your-company.com/simple/
+  UV_PUBLISH_TOKEN: ${{ secrets.PRIVATE_PYPI_TOKEN }}</code></pre>
+
+    <h2>pyproject.toml Requirements</h2>
+    <div class="note">
+      <div class="note-title">Required Fields</div>
+      <pre><code>[project]
+name = "your-package"
+version = "0.1.0"
+description = "A short description"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Your Name", email = "you@example.com"}]
+requires-python = ">=3.8"</code></pre>
+    </div>
+
+    <h2>Environment Variables</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Tool</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>UV_PUBLISH_TOKEN</code></td>
+          <td>uv</td>
+          <td>PyPI API token</td>
+        </tr>
+        <tr>
+          <td><code>UV_PUBLISH_URL</code></td>
+          <td>uv</td>
+          <td>Custom registry URL</td>
+        </tr>
+        <tr>
+          <td><code>TWINE_USERNAME</code></td>
+          <td>twine</td>
+          <td>Username (<code>__token__</code> for API tokens)</td>
+        </tr>
+        <tr>
+          <td><code>TWINE_PASSWORD</code></td>
+          <td>twine</td>
+          <td>Password or API token</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docker Authentication - Release Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/release-pilot-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav><a href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Back to Documentation</a></nav>
+    
+    <h1>
+      <img src="https://www.docker.com/wp-content/uploads/2022/03/Moby-logo.png" alt="Docker">
+      Docker Authentication
+    </h1>
+    <p class="subtitle">Push images to Docker Hub, GitHub Container Registry, or AWS ECR</p>
+
+    <h2>GitHub Container Registry (GHCR)</h2>
+    <div class="note recommended">
+      <div class="note-title">Recommended for GitHub Projects</div>
+      Uses the built-in <code>GITHUB_TOKEN</code> - no additional secrets needed.
+    </div>
+
+    <h3>Workflow Configuration</h3>
+    <pre><code>permissions:
+  contents: write
+  packages: write  # Required for GHCR
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h3>release-pilot.yml Configuration</h3>
+    <pre><code>packages:
+  - name: my-app
+    ecosystem: docker
+    docker:
+      registry: ghcr.io
+      image: your-org/your-app
+      platforms:
+        - linux/amd64
+        - linux/arm64
+      tags:
+        - latest
+        - "{version}"
+        - "{major}.{minor}"</code></pre>
+
+    <h2>Docker Hub</h2>
+    
+    <h3>Getting Credentials</h3>
+    <ol>
+      <li>Go to <a href="https://hub.docker.com/settings/security">Docker Hub Security Settings</a></li>
+      <li>Create a new Access Token</li>
+      <li>Add as secrets: <code>DOCKERHUB_USERNAME</code> and <code>DOCKERHUB_TOKEN</code></li>
+    </ol>
+
+    <h3>Workflow Configuration</h3>
+    <pre><code>- uses: docker/login-action@v3
+  with:
+    username: ${{ secrets.DOCKERHUB_USERNAME }}
+    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h3>release-pilot.yml Configuration</h3>
+    <pre><code>packages:
+  - name: my-app
+    ecosystem: docker
+    docker:
+      registry: docker.io
+      image: your-username/your-app
+      tags:
+        - latest
+        - "{version}"</code></pre>
+
+    <h2>AWS Elastic Container Registry (ECR)</h2>
+    
+    <h3>Workflow Configuration</h3>
+    <pre><code>- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    aws-region: us-east-1
+
+- uses: aws-actions/amazon-ecr-login@v2
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h3>release-pilot.yml Configuration</h3>
+    <pre><code>packages:
+  - name: my-app
+    ecosystem: docker
+    docker:
+      registry: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+      image: my-app
+      tags:
+        - latest
+        - "{version}"</code></pre>
+
+    <h2>Google Artifact Registry</h2>
+    <pre><code>- uses: google-github-actions/auth@v2
+  with:
+    credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+- uses: google-github-actions/setup-gcloud@v2
+
+- run: gcloud auth configure-docker us-docker.pkg.dev
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h3>release-pilot.yml Configuration</h3>
+    <pre><code>packages:
+  - name: my-app
+    ecosystem: docker
+    docker:
+      registry: us-docker.pkg.dev
+      image: your-project/your-repo/your-app
+      tags:
+        - latest
+        - "{version}"</code></pre>
+
+    <h2>Tag Templates</h2>
+    <p>Use placeholders to generate tags dynamically:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Placeholder</th>
+          <th>Example (v1.2.3)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>{version}</code></td>
+          <td><code>1.2.3</code></td>
+        </tr>
+        <tr>
+          <td><code>{major}</code></td>
+          <td><code>1</code></td>
+        </tr>
+        <tr>
+          <td><code>{minor}</code></td>
+          <td><code>2</code></td>
+        </tr>
+        <tr>
+          <td><code>{patch}</code></td>
+          <td><code>3</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Docker Configuration Reference</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>registry</code></td>
+          <td>Registry hostname</td>
+          <td><code>docker.io</code></td>
+        </tr>
+        <tr>
+          <td><code>image</code></td>
+          <td>Image name (required)</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><code>dockerfile</code></td>
+          <td>Path to Dockerfile</td>
+          <td><code>Dockerfile</code></td>
+        </tr>
+        <tr>
+          <td><code>context</code></td>
+          <td>Build context directory</td>
+          <td>Package path</td>
+        </tr>
+        <tr>
+          <td><code>platforms</code></td>
+          <td>Target platforms</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><code>buildArgs</code></td>
+          <td>Build-time variables</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><code>target</code></td>
+          <td>Multi-stage build target</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><code>tags</code></td>
+          <td>Stable release tags</td>
+          <td><code>['latest', '{version}']</code></td>
+        </tr>
+        <tr>
+          <td><code>devTags</code></td>
+          <td>Dev release tags</td>
+          <td><code>['dev', '{version}']</code></td>
+        </tr>
+        <tr>
+          <td><code>push</code></td>
+          <td>Push after build</td>
+          <td><code>true</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

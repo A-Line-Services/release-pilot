@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NPM Authentication - Release Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/release-pilot-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav><a href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Back to Documentation</a></nav>
+    
+    <h1>
+      <img src="https://static-production.npmjs.com/58a19602036db1daee0d7863c94673a4.png" alt="npm">
+      NPM Authentication
+    </h1>
+    <p class="subtitle">Publish packages to npm registry or GitHub Packages</p>
+
+    <h2>Option 1: Pass Token as Input</h2>
+    <div class="note recommended">
+      <div class="note-title">Recommended</div>
+      Simple and secure - Release Pilot handles .npmrc configuration automatically.
+    </div>
+    <pre><code>- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.NPM_TOKEN }}</code></pre>
+    
+    <h3>Getting an NPM Token</h3>
+    <ol>
+      <li>Go to <a href="https://www.npmjs.com/settings/tokens">npmjs.com/settings/tokens</a></li>
+      <li>Click "Generate New Token" &rarr; "Classic Token"</li>
+      <li>Select "Automation" type</li>
+      <li>Copy the token and add it as <code>NPM_TOKEN</code> secret in your repo</li>
+    </ol>
+
+    <h2>Option 2: Pre-configure .npmrc</h2>
+    <p>If you need more control over npm configuration:</p>
+    <pre><code>- uses: actions/setup-node@v4
+  with:
+    node-version: 20
+    registry-url: 'https://registry.npmjs.org'
+
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}</code></pre>
+
+    <h2>GitHub Packages</h2>
+    <p>To publish to GitHub Packages instead of npm:</p>
+    <pre><code>- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-registry: 'https://npm.pkg.github.com'</code></pre>
+    
+    <div class="note">
+      <div class="note-title">Note</div>
+      Your <code>package.json</code> must have the correct scope:
+      <pre><code>{
+  "name": "@your-org/your-package",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}</code></pre>
+    </div>
+
+    <h2>Private Registries</h2>
+    <p>For private npm registries (Verdaccio, Artifactory, etc.):</p>
+    <pre><code>- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.PRIVATE_NPM_TOKEN }}
+    npm-registry: 'https://npm.your-company.com'</code></pre>
+
+    <h2>Inputs Reference</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Input</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>npm-token</code></td>
+          <td>NPM authentication token</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><code>npm-registry</code></td>
+          <td>NPM registry URL</td>
+          <td><code>https://registry.npmjs.org</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

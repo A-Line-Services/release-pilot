@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Release Pilot - Documentation</title>
+  <link rel="icon" type="image/svg+xml" href="assets/release-pilot-logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .container { max-width: 900px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="assets/release-pilot.svg" alt="Release Pilot" class="logo">
+      <p>Framework-agnostic release automation for GitHub Actions</p>
+      <div class="badges">
+        <a href="https://github.com/a-line-services/release-pilot/actions"><img src="https://img.shields.io/github/actions/workflow/status/a-line-services/release-pilot/ci.yml?style=flat-square&label=CI" alt="CI"></a>
+        <a href="https://github.com/a-line-services/release-pilot/releases"><img src="https://img.shields.io/github/v/release/a-line-services/release-pilot?style=flat-square" alt="Release"></a>
+        <a href="https://github.com/a-line-services/release-pilot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/a-line-services/release-pilot?style=flat-square" alt="License"></a>
+      </div>
+    </header>
+
+    <h2>Getting Started</h2>
+    <div class="cards">
+      <a href="https://github.com/a-line-services/release-pilot#quick-start" class="card">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Quick Start
+        </h3>
+        <p>Get up and running in minutes with minimal configuration.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="https://github.com/a-line-services/release-pilot#full-configuration-reference" class="card">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Configuration
+        </h3>
+        <p>Full reference for all configuration options.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="https://github.com/a-line-services/release-pilot/tree/main/examples" class="card">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Examples
+        </h3>
+        <p>Complete configurations for common use cases.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+
+    <h2>Authentication Guides</h2>
+    <div class="cards">
+      <a href="authentication/npm.html" class="card">
+        <h3>
+          <img src="https://static-production.npmjs.com/58a19602036db1daee0d7863c94673a4.png" alt="npm">
+          NPM / GitHub Packages
+        </h3>
+        <p>Authenticate with npm registry or GitHub Packages.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="authentication/cargo.html" class="card">
+        <h3>
+          <img src="https://rust-lang.org/logos/rust-logo-512x512.png" alt="Rust">
+          Cargo / crates.io
+        </h3>
+        <p>Publish Rust crates to crates.io.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="authentication/python.html" class="card">
+        <h3>
+          <img src="https://www.python.org/static/favicon.ico" alt="Python">
+          Python / PyPI
+        </h3>
+        <p>Publish packages to PyPI with trusted publishing.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="authentication/docker.html" class="card">
+        <h3>
+          <img src="https://www.docker.com/wp-content/uploads/2022/03/Moby-logo.png" alt="Docker">
+          Docker Registries
+        </h3>
+        <p>Push images to Docker Hub, GHCR, or ECR.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="authentication/go.html" class="card">
+        <h3>
+          <img src="https://go.dev/blog/go-brand/Go-Logo/SVG/Go-Logo_Aqua.svg" alt="Go">
+          Go Modules
+        </h3>
+        <p>Release Go modules via Git tags.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="authentication/composer.html" class="card">
+        <h3>
+          <img src="https://getcomposer.org/img/logo-composer-transparent5.png" alt="Composer">
+          Composer / Packagist
+        </h3>
+        <p>Publish PHP packages to Packagist.</p>
+        <svg class="arrow icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+
+    <h2>Supported Ecosystems</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ecosystem</th>
+          <th>Version File</th>
+          <th>Publish Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>npm</code></td>
+          <td><code>package.json</code></td>
+          <td><code>npm publish</code></td>
+        </tr>
+        <tr>
+          <td><code>cargo</code></td>
+          <td><code>Cargo.toml</code></td>
+          <td><code>cargo publish</code></td>
+        </tr>
+        <tr>
+          <td><code>python</code></td>
+          <td><code>pyproject.toml</code></td>
+          <td><code>uv publish</code> / <code>twine</code></td>
+        </tr>
+        <tr>
+          <td><code>go</code></td>
+          <td><code>go.mod</code></td>
+          <td>Git tags only</td>
+        </tr>
+        <tr>
+          <td><code>composer</code></td>
+          <td><code>composer.json</code></td>
+          <td>Git tags (Packagist)</td>
+        </tr>
+        <tr>
+          <td><code>docker</code></td>
+          <td><code>Dockerfile</code></td>
+          <td><code>docker buildx</code></td>
+        </tr>
+        <tr>
+          <td><code>custom</code></td>
+          <td>User-defined</td>
+          <td>User-defined script</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <a href="https://github.com/a-line-services/release-pilot">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</body>
+</html>

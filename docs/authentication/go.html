@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go Authentication - Release Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/release-pilot-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav><a href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Back to Documentation</a></nav>
+    
+    <h1>
+      <img src="https://go.dev/blog/go-brand/Go-Logo/SVG/Go-Logo_Aqua.svg" alt="Go">
+      Go Authentication
+    </h1>
+    <p class="subtitle">Publish Go modules via Git tags</p>
+
+    <div class="note recommended">
+      <div class="note-title">No Registry Authentication Needed</div>
+      Go modules are distributed directly from your Git repository. The Go module proxy automatically fetches tagged versions from public repositories.
+    </div>
+
+    <h2>How Go Module Releases Work</h2>
+    <p>Unlike other ecosystems, Go doesn't have a traditional package registry that you push to. Instead:</p>
+    <ol>
+      <li>You create a Git tag (e.g., <code>v1.2.3</code>)</li>
+      <li>Push the tag to your repository</li>
+      <li>The Go module proxy (<code>proxy.golang.org</code>) automatically fetches and caches your module</li>
+      <li>Users can immediately <code>go get</code> your new version</li>
+    </ol>
+
+    <h2>Basic Workflow</h2>
+    <p>Release Pilot handles creating and pushing tags automatically:</p>
+    <pre><code>permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h2>Configuration</h2>
+    <p>In your <code>.github/release-pilot.yml</code>:</p>
+    <pre><code>ecosystem: go
+versionFile: go.mod
+tagPrefix: v</code></pre>
+
+    <div class="note">
+      <div class="note-title">Version File</div>
+      Go modules don't store versions in <code>go.mod</code>. Release Pilot uses the file only for ecosystem detection. Versions come entirely from Git tags.
+    </div>
+
+    <h2>Private Modules</h2>
+    <p>For private repositories, users need to configure their Go environment:</p>
+    
+    <h3>Using GOPRIVATE</h3>
+    <pre><code># Users of your private module need to set:
+go env -w GOPRIVATE=github.com/your-org/*</code></pre>
+
+    <h3>GitHub Authentication</h3>
+    <p>Users also need Git authentication for private repos:</p>
+    <pre><code># Option 1: SSH
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+# Option 2: Personal Access Token
+git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"</code></pre>
+
+    <h2>Monorepo / Multi-Module Support</h2>
+    <p>For repositories with multiple Go modules, use submodule prefixes in tags:</p>
+    <pre><code># Module at repo root
+v1.2.3
+
+# Module in subdirectory "pkg/foo"
+pkg/foo/v1.2.3</code></pre>
+
+    <p>Configure the tag prefix in Release Pilot:</p>
+    <pre><code>ecosystem: go
+versionFile: pkg/foo/go.mod
+tagPrefix: pkg/foo/v</code></pre>
+
+    <h2>Major Version Branches</h2>
+    <p>Go's module system requires special handling for major versions &gt;= 2:</p>
+    
+    <div class="note">
+      <div class="note-title">v2+ Modules</div>
+      For Go modules v2 and above, you must either:
+      <ul>
+        <li>Add <code>/v2</code> (or <code>/v3</code>, etc.) suffix to your module path in <code>go.mod</code></li>
+        <li>Or use a major version branch (<code>v2</code>, <code>v3</code>, etc.)</li>
+      </ul>
+    </div>
+
+    <pre><code># go.mod for v2+
+module github.com/your-org/your-module/v2
+
+go 1.21</code></pre>
+
+    <h2>Triggering Proxy Updates</h2>
+    <p>After pushing a tag, the module proxy caches your version when someone first requests it. To pre-warm the cache:</p>
+    <pre><code># Add this step after release-pilot
+- name: Warm proxy cache
+  run: |
+    GOPROXY=https://proxy.golang.org go list -m github.com/your-org/your-module@${{ steps.release.outputs.version }}</code></pre>
+
+    <h2>go.mod Requirements</h2>
+    <div class="note">
+      <div class="note-title">Minimum Requirements</div>
+      <pre><code>module github.com/your-org/your-module
+
+go 1.21</code></pre>
+    </div>
+
+    <h2>Verifying Your Release</h2>
+    <p>After Release Pilot creates a tag, verify it's available:</p>
+    <pre><code># Check on pkg.go.dev
+https://pkg.go.dev/github.com/your-org/your-module@v1.2.3
+
+# Or via command line
+go list -m -versions github.com/your-org/your-module</code></pre>
+  </div>
+</body>
+</html>

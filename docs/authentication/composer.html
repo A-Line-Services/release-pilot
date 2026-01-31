@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Composer Authentication - Release Pilot</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/release-pilot-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div class="container">
+    <nav><a href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Back to Documentation</a></nav>
+    
+    <h1>
+      <img src="https://getcomposer.org/img/logo-composer-transparent5.png" alt="Composer">
+      Composer Authentication
+    </h1>
+    <p class="subtitle">Publish PHP packages to Packagist</p>
+
+    <div class="note recommended">
+      <div class="note-title">No CI Authentication Needed</div>
+      Packagist pulls packages directly from your Git repository. You only need to set up a webhook once, then Release Pilot handles tagging.
+    </div>
+
+    <h2>How Packagist Works</h2>
+    <p>Unlike npm or PyPI, you don't push packages to Packagist. Instead:</p>
+    <ol>
+      <li>Register your package on Packagist (one-time setup)</li>
+      <li>Configure a GitHub webhook to notify Packagist of updates</li>
+      <li>When you push a tag, Packagist fetches the new version from your repo</li>
+      <li>Users can immediately <code>composer require</code> your package</li>
+    </ol>
+
+    <h2>Initial Setup</h2>
+
+    <h3>1. Register on Packagist</h3>
+    <ol>
+      <li>Go to <a href="https://packagist.org">packagist.org</a> and sign in</li>
+      <li>Click "Submit" and enter your repository URL</li>
+      <li>Packagist will validate your <code>composer.json</code></li>
+    </ol>
+
+    <h3>2. Configure GitHub Webhook</h3>
+    <p>This ensures Packagist updates immediately when you push tags:</p>
+    <ol>
+      <li>Go to your repo Settings &rarr; Webhooks</li>
+      <li>Add webhook with URL: <code>https://packagist.org/api/github?username=YOUR_PACKAGIST_USERNAME</code></li>
+      <li>Content type: <code>application/json</code></li>
+      <li>Secret: Get from your <a href="https://packagist.org/profile/">Packagist profile</a> &rarr; "Show API Token"</li>
+      <li>Events: Select "Just the push event"</li>
+    </ol>
+
+    <div class="note">
+      <div class="note-title">Alternative: Packagist API Token</div>
+      You can also use GitHub Actions to notify Packagist via API, but the webhook method is simpler and more reliable.
+    </div>
+
+    <h2>Workflow Configuration</h2>
+    <p>Release Pilot just needs to create and push tags:</p>
+    <pre><code>permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+
+    <h2>Release Pilot Configuration</h2>
+    <p>In your <code>.github/release-pilot.yml</code>:</p>
+    <pre><code>ecosystem: composer
+versionFile: composer.json
+tagPrefix: v</code></pre>
+
+    <h2>composer.json Requirements</h2>
+    <div class="note">
+      <div class="note-title">Required Fields</div>
+      <pre><code>{
+  "name": "vendor/package-name",
+  "description": "A short description of your package",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Vendor\\\\PackageName\\\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.1"
+  }
+}</code></pre>
+    </div>
+
+    <p>Note: Packagist extracts versions from Git tags, not from <code>composer.json</code>. You don't need a <code>version</code> field.</p>
+
+    <h2>Private Packages</h2>
+    <p>For private packages, you have several options:</p>
+
+    <h3>Private Packagist</h3>
+    <p><a href="https://packagist.com">Private Packagist</a> is the commercial offering for private packages:</p>
+    <ol>
+      <li>Sign up at packagist.com</li>
+      <li>Add your private repository</li>
+      <li>Configure authentication in your projects</li>
+    </ol>
+
+    <h3>Satis (Self-Hosted)</h3>
+    <p>Run your own Composer repository with <a href="https://github.com/composer/satis">Satis</a>:</p>
+    <pre><code># satis.json
+{
+  "name": "My Private Repository",
+  "homepage": "https://packages.example.com",
+  "repositories": [
+    {"type": "vcs", "url": "git@github.com:your-org/private-package.git"}
+  ],
+  "require-all": true
+}</code></pre>
+
+    <h3>VCS Repository (Direct)</h3>
+    <p>For small teams, reference private repos directly in <code>composer.json</code>:</p>
+    <pre><code>{
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "git@github.com:your-org/private-package.git"
+    }
+  ],
+  "require": {
+    "your-org/private-package": "^1.0"
+  }
+}</code></pre>
+
+    <h2>Version Constraints</h2>
+    <p>Composer uses semantic versioning with these tag formats:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Tag</th>
+          <th>Composer Version</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>v1.2.3</code></td>
+          <td><code>1.2.3</code></td>
+        </tr>
+        <tr>
+          <td><code>1.2.3</code></td>
+          <td><code>1.2.3</code></td>
+        </tr>
+        <tr>
+          <td><code>v2.0.0-beta.1</code></td>
+          <td><code>2.0.0-beta1</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Verifying Your Release</h2>
+    <p>After Release Pilot creates a tag:</p>
+    <ol>
+      <li>Check your package page on Packagist for the new version</li>
+      <li>The webhook should trigger within seconds</li>
+      <li>If not updating, manually click "Update" on your Packagist package page</li>
+    </ol>
+    <pre><code># Test installation
+composer require your-vendor/your-package:1.2.3</code></pre>
+
+    <h2>Troubleshooting</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Solution</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Version not appearing</td>
+          <td>Check webhook delivery in GitHub Settings &rarr; Webhooks</td>
+        </tr>
+        <tr>
+          <td>Invalid composer.json</td>
+          <td>Run <code>composer validate</code> locally</td>
+        </tr>
+        <tr>
+          <td>Wrong version detected</td>
+          <td>Ensure tag follows semver (e.g., <code>v1.2.3</code>)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
