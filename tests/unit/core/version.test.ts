@@ -126,44 +126,44 @@ describe('version utilities', () => {
   });
 
   describe('createDevVersion', () => {
-    test('creates dev version with timestamp', () => {
+    test('creates dev version with base36 timestamp', () => {
       const result = createDevVersion('1.2.3');
-      // Should match pattern: 1.2.3-dev.YYYYMMDDHHmmss
-      expect(result).toMatch(/^1\.2\.3-dev\.\d{14}$/);
+      // Should match pattern: 1.2.3-dev.<base36> (8 chars for ms timestamp)
+      expect(result).toMatch(/^1\.2\.3-dev\.[a-z0-9]{8}$/);
     });
 
     test('creates dev version with custom suffix', () => {
       const result = createDevVersion('1.2.3', 'nightly');
-      expect(result).toMatch(/^1\.2\.3-nightly\.\d{14}$/);
+      expect(result).toMatch(/^1\.2\.3-nightly\.[a-z0-9]{8}$/);
     });
 
     test('creates alpha version', () => {
       const result = createDevVersion('1.2.3', 'alpha');
-      expect(result).toMatch(/^1\.2\.3-alpha\.\d{14}$/);
+      expect(result).toMatch(/^1\.2\.3-alpha\.[a-z0-9]{8}$/);
     });
 
     test('creates beta version', () => {
       const result = createDevVersion('1.2.3', 'beta');
-      expect(result).toMatch(/^1\.2\.3-beta\.\d{14}$/);
+      expect(result).toMatch(/^1\.2\.3-beta\.[a-z0-9]{8}$/);
     });
 
     test('creates rc version', () => {
       const result = createDevVersion('1.2.3', 'rc');
-      expect(result).toMatch(/^1\.2\.3-rc\.\d{14}$/);
+      expect(result).toMatch(/^1\.2\.3-rc\.[a-z0-9]{8}$/);
     });
 
     test('handles v prefix by stripping it', () => {
       const result = createDevVersion('v1.2.3');
-      expect(result).toMatch(/^1\.2\.3-dev\.\d{14}$/);
+      expect(result).toMatch(/^1\.2\.3-dev\.[a-z0-9]{8}$/);
     });
 
-    test('timestamps sort correctly', () => {
+    test('timestamps sort correctly', async () => {
       const v1 = createDevVersion('1.2.3');
-      // Wait a tiny bit to ensure different timestamp
+      // Wait 1ms to ensure different timestamp
+      await new Promise((resolve) => setTimeout(resolve, 1));
       const v2 = createDevVersion('1.2.3');
-      // Both should be valid, and v2 should be >= v1
-      expect(v1).toMatch(/^1\.2\.3-dev\.\d{14}$/);
-      expect(v2).toMatch(/^1\.2\.3-dev\.\d{14}$/);
+      // v2 should sort after v1 (lexicographically, base36 timestamps sort correctly)
+      expect(v2 > v1).toBe(true);
     });
   });
 
