@@ -7,9 +7,9 @@
  * @module ecosystems/cargo
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import type { Ecosystem, EcosystemContext } from './base.js';
+import { BaseFileEcosystem, type EcosystemContext } from './base.js';
 
 /**
  * Cargo ecosystem implementation for Rust crates
@@ -18,118 +18,28 @@ import type { Ecosystem, EcosystemContext } from './base.js';
  * - Reading/writing version in Cargo.toml
  * - Workspace version inheritance
  * - Publishing via `cargo publish`
+ * - Automatic token configuration via CARGO_REGISTRY_TOKEN
  *
  * @example
  * const cargo = new CargoEcosystem();
  * const version = await cargo.readVersion(ctx);
  * await cargo.writeVersion(ctx, '1.2.0');
  */
-export class CargoEcosystem implements Ecosystem {
+export class CargoEcosystem extends BaseFileEcosystem {
   readonly name = 'cargo';
 
-  /**
-   * Detect if this is a Cargo project
-   *
-   * @param path - Directory to check
-   * @returns True if Cargo.toml exists
-   */
-  async detect(path: string): Promise<boolean> {
-    try {
-      return existsSync(join(path, 'Cargo.toml'));
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Read version from Cargo.toml
-   *
-   * Supports both direct version and workspace version inheritance.
-   *
-   * @param ctx - Ecosystem context
-   * @returns Version string
-   * @throws Error if version cannot be determined
-   */
-  async readVersion(ctx: EcosystemContext): Promise<string> {
-    const cargoPath = this.getCargoPath(ctx);
-
-    if (!existsSync(cargoPath)) {
-      throw new Error(`Cargo.toml not found at ${cargoPath}`);
-    }
-
-    const content = readFileSync(cargoPath, 'utf-8');
-
-    // Check for workspace version first
-    const workspaceVersion = this.extractWorkspaceVersion(content);
-    if (workspaceVersion) {
-      return workspaceVersion;
-    }
-
-    // Check for package version
-    const packageVersion = this.extractPackageVersion(content);
-    if (packageVersion) {
-      return packageVersion;
-    }
-
-    throw new Error(`No version found in ${cargoPath}`);
-  }
-
-  /**
-   * Write version to Cargo.toml
-   *
-   * Updates workspace.package.version if present, otherwise package.version.
-   *
-   * @param ctx - Ecosystem context
-   * @param version - New version to write
-   */
-  async writeVersion(ctx: EcosystemContext, version: string): Promise<void> {
-    if (ctx.dryRun) {
-      ctx.log(`[dry-run] Would write version ${version} to Cargo.toml`);
-      return;
-    }
-
-    const cargoPath = this.getCargoPath(ctx);
-    let content = readFileSync(cargoPath, 'utf-8');
-
-    // Check if using workspace versioning
-    // Using RegExp constructor to avoid eslint no-useless-escape warnings
-    if (content.includes('[workspace.package]')) {
-      // Update workspace version
-      const wsRegex = new RegExp('(\\[workspace\\.package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
-      content = content.replace(wsRegex, `$1"${version}"`);
-    } else {
-      // Update package version
-      const pkgRegex = new RegExp('(\\[package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
-      content = content.replace(pkgRegex, `$1"${version}"`);
-    }
-
-    writeFileSync(cargoPath, content);
-
-    ctx.log(`Updated version to ${version} in ${cargoPath}`);
-  }
-
-  /**
-   * Get files that should be committed after version bump
-   *
-   * @param ctx - Ecosystem context
-   * @returns List of version-related files
-   */
-  async getVersionFiles(ctx: EcosystemContext): Promise<string[]> {
-    const files = ['Cargo.toml'];
-
-    // Include Cargo.lock if it exists
-    const lockFile = join(ctx.path, 'Cargo.lock');
-    if (existsSync(lockFile)) {
-      files.push('Cargo.lock');
-    }
-
-    return files;
+  constructor() {
+    super({
+      manifestFile: 'Cargo.toml',
+      lockFiles: ['Cargo.lock'],
+    });
   }
 
   /**
    * Publish crate to crates.io
    *
-   * @param ctx - Ecosystem context
+   * If registry.cargoToken is provided, passes it via --token flag.
+   * Otherwise, assumes credentials are already configured.
    */
   async publish(ctx: EcosystemContext): Promise<void> {
     if (ctx.dryRun) {
@@ -139,7 +49,15 @@ export class CargoEcosystem implements Ecosystem {
 
     const { exec } = await import('@actions/exec');
 
-    await exec('cargo', ['publish', '--allow-dirty'], {
+    const args = ['publish', '--allow-dirty'];
+
+    // Add token if provided
+    if (ctx.registry?.cargoToken) {
+      args.push('--token', ctx.registry.cargoToken);
+      ctx.log('Using provided cargo token');
+    }
+
+    await exec('cargo', args, {
       cwd: ctx.path,
     });
 
@@ -148,8 +66,6 @@ export class CargoEcosystem implements Ecosystem {
 
   /**
    * Update Cargo.lock after version change
-   *
-   * @param ctx - Ecosystem context
    */
   async postVersionUpdate(ctx: EcosystemContext): Promise<void> {
     if (ctx.dryRun) {
@@ -173,13 +89,37 @@ export class CargoEcosystem implements Ecosystem {
   }
 
   /**
-   * Get path to Cargo.toml
+   * Parse version from Cargo.toml content
+   *
+   * Supports both direct version and workspace version inheritance.
    */
-  private getCargoPath(ctx: EcosystemContext): string {
-    if (ctx.versionFile) {
-      return join(ctx.path, ctx.versionFile);
+  protected parseVersion(content: string): string | null {
+    // Check for workspace version first
+    const workspaceVersion = this.extractWorkspaceVersion(content);
+    if (workspaceVersion) {
+      return workspaceVersion;
     }
-    return join(ctx.path, 'Cargo.toml');
+
+    // Check for package version
+    return this.extractPackageVersion(content);
+  }
+
+  /**
+   * Update version in Cargo.toml content
+   *
+   * Updates workspace.package.version if present, otherwise package.version.
+   */
+  protected updateVersion(content: string, version: string): string {
+    // Check if using workspace versioning
+    if (content.includes('[workspace.package]')) {
+      // Update workspace version
+      const wsRegex = new RegExp('(\\[workspace\\.package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
+      return content.replace(wsRegex, `$1"${version}"`);
+    }
+
+    // Update package version
+    const pkgRegex = new RegExp('(\\[package\\][^\\[]*version\\s*=\\s*)"[^"]*"', 's');
+    return content.replace(pkgRegex, `$1"${version}"`);
   }
 
   /**

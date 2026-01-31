@@ -14,7 +14,6 @@
  */
 
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 import { existsSync } from 'fs';
 import {
   loadConfig,
@@ -37,7 +36,12 @@ import {
 } from './core/git.js';
 import { findLastStableRelease, filterPRsSinceDate } from './github/releases.js';
 import { extractReleaseLabels, getBumpTypeFromLabels } from './github/labels.js';
-import { EcosystemRegistry } from './ecosystems/base.js';
+import { GitHubClient } from './github/client.js';
+import {
+  EcosystemRegistry,
+  type EcosystemContext,
+  type RegistryConfig,
+} from './ecosystems/base.js';
 import { NpmEcosystem } from './ecosystems/npm.js';
 import { CargoEcosystem } from './ecosystems/cargo.js';
 
@@ -52,6 +56,9 @@ interface ActionInputs {
   devSuffix: string;
   packages?: string;
   defaultBump: BumpType;
+  npmToken?: string;
+  npmRegistry?: string;
+  cargoToken?: string;
 }
 
 /**
@@ -79,6 +86,9 @@ function getInputs(): ActionInputs {
     devSuffix: core.getInput('dev-suffix') || 'dev',
     packages: core.getInput('packages') || undefined,
     defaultBump: (core.getInput('default-bump') || 'patch') as BumpType,
+    npmToken: core.getInput('npm-token') || undefined,
+    npmRegistry: core.getInput('npm-registry') || undefined,
+    cargoToken: core.getInput('cargo-token') || undefined,
   };
 }
 
@@ -143,6 +153,23 @@ function setOutputs(result: ReleaseResult): void {
 }
 
 /**
+ * Create ecosystem context for a package
+ */
+function createEcosystemContext(
+  pkg: ResolvedPackageConfig,
+  dryRun: boolean,
+  registry?: RegistryConfig
+): EcosystemContext {
+  return {
+    path: pkg.path,
+    versionFile: pkg.versionFile,
+    dryRun,
+    log: (msg: string) => core.info(`[${pkg.name}] ${msg}`),
+    registry,
+  };
+}
+
+/**
  * Main action runner
  */
 export async function run(): Promise<void> {
@@ -155,25 +182,13 @@ export async function run(): Promise<void> {
   core.info(`Dry run: ${inputs.dryRun}`);
 
   // Initialize GitHub client
-  const octokit = github.getOctokit(inputs.githubToken);
-  const { owner, repo } = github.context.repo;
+  const gh = GitHubClient.fromContext(inputs.githubToken);
 
   // Get releases to find the last stable one
   core.info('Finding last stable release...');
-  const { data: releases } = await octokit.rest.repos.listReleases({
-    owner,
-    repo,
-    per_page: 100,
-  });
+  const releases = await gh.listReleases();
 
-  const lastStable = findLastStableRelease(
-    releases.map((r) => ({
-      tagName: r.tag_name,
-      publishedAt: r.published_at || '',
-      prerelease: r.prerelease,
-    })),
-    config.version.prereleasePattern
-  );
+  const lastStable = findLastStableRelease(releases, config.version.prereleasePattern);
 
   let previousVersion = '0.0.0';
   let sinceDate = new Date(0).toISOString();
@@ -188,24 +203,16 @@ export async function run(): Promise<void> {
 
   // Get merged PRs since last release
   core.info('Finding PRs since last release...');
-  const { data: pulls } = await octokit.rest.pulls.list({
-    owner,
-    repo,
-    state: 'closed',
-    sort: 'updated',
-    direction: 'desc',
-    per_page: 100,
-  });
+  const mergedPRs = await gh.listMergedPullRequests();
 
-  const mergedPRs = pulls
-    .filter((pr) => pr.merged_at !== null)
-    .map((pr) => ({
+  const recentPRs = filterPRsSinceDate(
+    mergedPRs.map((pr) => ({
       number: pr.number,
-      mergedAt: pr.merged_at,
-      labels: pr.labels.map((l) => l.name || ''),
-    }));
-
-  const recentPRs = filterPRsSinceDate(mergedPRs, sinceDate);
+      mergedAt: pr.mergedAt,
+      labels: pr.labels,
+    })),
+    sinceDate
+  );
   core.info(`Found ${recentPRs.length} PRs merged since last release`);
 
   // Extract release labels and determine bump type
@@ -296,6 +303,13 @@ export async function run(): Promise<void> {
   // Configure git user
   await configureGitUser(gitOptions);
 
+  // Build registry config from inputs
+  const registryConfig: RegistryConfig = {
+    npmToken: inputs.npmToken,
+    npmRegistry: inputs.npmRegistry,
+    cargoToken: inputs.cargoToken,
+  };
+
   // Update versions in all packages
   const allVersionFiles: string[] = [];
   const releasedPackages: string[] = [];
@@ -313,12 +327,7 @@ export async function run(): Promise<void> {
       continue;
     }
 
-    const ctx = {
-      path: pkg.path,
-      versionFile: pkg.versionFile,
-      dryRun: inputs.dryRun,
-      log: (msg: string) => core.info(`[${pkg.name}] ${msg}`),
-    };
+    const ctx = createEcosystemContext(pkg, inputs.dryRun, registryConfig);
 
     core.info(`Updating ${pkg.name} (${pkg.ecosystem})...`);
 
@@ -366,17 +375,15 @@ export async function run(): Promise<void> {
 
     const isPrerelease = inputs.mode === 'dev';
 
-    const { data: release } = await octokit.rest.repos.createRelease({
-      owner,
-      repo,
-      tag_name: tag,
+    const release = await gh.createRelease({
+      tagName: tag,
       name: tag,
       draft: config.githubRelease.draft,
       prerelease: isPrerelease,
-      generate_release_notes: config.githubRelease.generateNotes,
+      generateReleaseNotes: config.githubRelease.generateNotes,
     });
 
-    releaseUrl = release.html_url;
+    releaseUrl = release.htmlUrl;
     core.info(`Created release: ${releaseUrl}`);
   }
 
@@ -395,12 +402,7 @@ export async function run(): Promise<void> {
         continue;
       }
 
-      const ctx = {
-        path: pkg.path,
-        versionFile: pkg.versionFile,
-        dryRun: inputs.dryRun,
-        log: (msg: string) => core.info(`[${pkg.name}] ${msg}`),
-      };
+      const ctx = createEcosystemContext(pkg, inputs.dryRun, registryConfig);
 
       core.info(`Publishing ${pkg.name}...`);
       await ecosystem.publish(ctx);

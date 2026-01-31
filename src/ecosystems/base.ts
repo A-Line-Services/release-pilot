@@ -7,6 +7,21 @@
  * @module ecosystems/base
  */
 
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
+
+/**
+ * Registry configuration for publishing
+ */
+export interface RegistryConfig {
+  /** NPM registry token */
+  npmToken?: string;
+  /** NPM registry URL */
+  npmRegistry?: string;
+  /** Cargo registry token */
+  cargoToken?: string;
+}
+
 /**
  * Context passed to ecosystem methods
  */
@@ -19,6 +34,8 @@ export interface EcosystemContext {
   dryRun: boolean;
   /** Logger for output */
   log: (message: string) => void;
+  /** Registry credentials for publishing */
+  registry?: RegistryConfig;
 }
 
 /**
@@ -106,6 +123,146 @@ export interface Ecosystem {
    * await ecosystem.postVersionUpdate?.(ctx);
    */
   postVersionUpdate?(ctx: EcosystemContext): Promise<void>;
+}
+
+/**
+ * Configuration for a file-based ecosystem
+ */
+export interface FileEcosystemConfig {
+  /** Default manifest filename (e.g., 'package.json', 'Cargo.toml') */
+  manifestFile: string;
+  /** Optional lockfile names to check for */
+  lockFiles?: string[];
+}
+
+/**
+ * Abstract base class for file-based ecosystems
+ *
+ * Provides common functionality for ecosystems that store version in a manifest file.
+ * Subclasses only need to implement the version parsing/writing logic.
+ *
+ * @example
+ * class MyEcosystem extends BaseFileEcosystem {
+ *   readonly name = 'my-ecosystem';
+ *
+ *   constructor() {
+ *     super({ manifestFile: 'manifest.json', lockFiles: ['manifest.lock'] });
+ *   }
+ *
+ *   protected parseVersion(content: string): string {
+ *     return JSON.parse(content).version;
+ *   }
+ *
+ *   protected updateVersion(content: string, version: string): string {
+ *     const data = JSON.parse(content);
+ *     data.version = version;
+ *     return JSON.stringify(data, null, 2);
+ *   }
+ * }
+ */
+export abstract class BaseFileEcosystem implements Ecosystem {
+  abstract readonly name: string;
+
+  protected readonly config: FileEcosystemConfig;
+
+  constructor(config: FileEcosystemConfig) {
+    this.config = config;
+  }
+
+  /**
+   * Detect if this ecosystem applies to a given path
+   *
+   * Checks if the manifest file exists in the directory.
+   */
+  async detect(path: string): Promise<boolean> {
+    try {
+      return existsSync(join(path, this.config.manifestFile));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Read the current version from the manifest
+   */
+  async readVersion(ctx: EcosystemContext): Promise<string> {
+    const manifestPath = this.getManifestPath(ctx);
+
+    if (!existsSync(manifestPath)) {
+      throw new Error(`${this.config.manifestFile} not found at ${manifestPath}`);
+    }
+
+    const content = readFileSync(manifestPath, 'utf-8');
+    const version = this.parseVersion(content, manifestPath);
+
+    if (!version) {
+      throw new Error(`No version found in ${manifestPath}`);
+    }
+
+    return version;
+  }
+
+  /**
+   * Write a new version to the manifest
+   */
+  async writeVersion(ctx: EcosystemContext, version: string): Promise<void> {
+    if (ctx.dryRun) {
+      ctx.log(`[dry-run] Would write version ${version} to ${this.config.manifestFile}`);
+      return;
+    }
+
+    const manifestPath = this.getManifestPath(ctx);
+    const content = readFileSync(manifestPath, 'utf-8');
+    const updatedContent = this.updateVersion(content, version);
+
+    writeFileSync(manifestPath, updatedContent);
+
+    ctx.log(`Updated version to ${version} in ${manifestPath}`);
+  }
+
+  /**
+   * Get files that should be committed after version bump
+   */
+  async getVersionFiles(ctx: EcosystemContext): Promise<string[]> {
+    const files = [this.config.manifestFile];
+
+    // Check for lockfiles
+    for (const lockFile of this.config.lockFiles ?? []) {
+      if (existsSync(join(ctx.path, lockFile))) {
+        files.push(lockFile);
+      }
+    }
+
+    return files;
+  }
+
+  /**
+   * Get the path to the manifest file
+   */
+  protected getManifestPath(ctx: EcosystemContext): string {
+    if (ctx.versionFile) {
+      return join(ctx.path, ctx.versionFile);
+    }
+    return join(ctx.path, this.config.manifestFile);
+  }
+
+  /**
+   * Parse the version from the manifest content
+   *
+   * @param content - Raw file content
+   * @param filePath - Path to the file (for error messages)
+   * @returns Version string or null if not found
+   */
+  protected abstract parseVersion(content: string, filePath: string): string | null;
+
+  /**
+   * Update the version in the manifest content
+   *
+   * @param content - Raw file content
+   * @param version - New version to write
+   * @returns Updated file content
+   */
+  protected abstract updateVersion(content: string, version: string): string;
 }
 
 /**

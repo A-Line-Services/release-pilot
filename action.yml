@@ -41,6 +41,19 @@ inputs:
     required: false
     default: 'patch'
 
+  npm-token:
+    description: 'NPM registry token for publishing (configures .npmrc automatically)'
+    required: false
+
+  npm-registry:
+    description: 'NPM registry URL (default: https://registry.npmjs.org)'
+    required: false
+    default: 'https://registry.npmjs.org'
+
+  cargo-token:
+    description: 'Cargo registry token for publishing to crates.io'
+    required: false
+
 outputs:
   version:
     description: 'The new version that was released'

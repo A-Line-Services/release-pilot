@@ -6,9 +6,9 @@
  * @module ecosystems/npm
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import type { Ecosystem, EcosystemContext } from './base.js';
+import { BaseFileEcosystem, type EcosystemContext } from './base.js';
 
 /**
  * NPM ecosystem implementation for Node.js packages
@@ -17,95 +17,32 @@ import type { Ecosystem, EcosystemContext } from './base.js';
  * - Reading/writing version in package.json
  * - Detecting package-lock.json and npm-shrinkwrap.json
  * - Publishing via `npm publish`
+ * - Automatic .npmrc configuration when token is provided
  *
  * @example
  * const npm = new NpmEcosystem();
  * const version = await npm.readVersion(ctx);
  * await npm.writeVersion(ctx, '1.2.0');
  */
-export class NpmEcosystem implements Ecosystem {
+export class NpmEcosystem extends BaseFileEcosystem {
   readonly name = 'npm';
 
-  /**
-   * Detect if this is an npm project
-   *
-   * @param path - Directory to check
-   * @returns True if package.json exists
-   */
-  async detect(path: string): Promise<boolean> {
-    try {
-      return existsSync(join(path, 'package.json'));
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Read version from package.json
-   *
-   * @param ctx - Ecosystem context
-   * @returns Version string
-   * @throws Error if package.json doesn't exist or has no version
-   */
-  async readVersion(ctx: EcosystemContext): Promise<string> {
-    const packagePath = this.getPackagePath(ctx);
-
-    if (!existsSync(packagePath)) {
-      throw new Error(`package.json not found at ${packagePath}`);
-    }
-
-    const content = JSON.parse(readFileSync(packagePath, 'utf-8'));
-
-    if (!content.version) {
-      throw new Error(`No version field in ${packagePath}`);
-    }
-
-    return content.version;
-  }
-
-  /**
-   * Write version to package.json
-   *
-   * Preserves existing formatting and all other fields.
-   *
-   * @param ctx - Ecosystem context
-   * @param version - New version to write
-   */
-  async writeVersion(ctx: EcosystemContext, version: string): Promise<void> {
-    if (ctx.dryRun) {
-      ctx.log(`[dry-run] Would write version ${version} to package.json`);
-      return;
-    }
-
-    const packagePath = this.getPackagePath(ctx);
-    const rawContent = readFileSync(packagePath, 'utf-8');
-    const content = JSON.parse(rawContent);
-
-    // Detect indent from existing file
-    const indent = this.detectIndent(rawContent);
-
-    content.version = version;
-
-    writeFileSync(packagePath, JSON.stringify(content, null, indent) + '\n');
-
-    ctx.log(`Updated version to ${version} in ${packagePath}`);
+  constructor() {
+    super({
+      manifestFile: 'package.json',
+      lockFiles: ['package-lock.json'],
+    });
   }
 
   /**
    * Get files that should be committed after version bump
    *
-   * @param ctx - Ecosystem context
-   * @returns List of version-related files
+   * Overrides base to also check for npm-shrinkwrap.json
    */
   async getVersionFiles(ctx: EcosystemContext): Promise<string[]> {
-    const files = ['package.json'];
+    const files = await super.getVersionFiles(ctx);
 
-    // Check for lockfiles
-    const lockFile = join(ctx.path, 'package-lock.json');
-    if (existsSync(lockFile)) {
-      files.push('package-lock.json');
-    }
-
+    // Also check for shrinkwrap
     const shrinkwrap = join(ctx.path, 'npm-shrinkwrap.json');
     if (existsSync(shrinkwrap)) {
       files.push('npm-shrinkwrap.json');
@@ -117,12 +54,18 @@ export class NpmEcosystem implements Ecosystem {
   /**
    * Publish package to npm registry
    *
-   * @param ctx - Ecosystem context
+   * If registry.npmToken is provided, configures .npmrc automatically.
+   * Otherwise, assumes credentials are already configured.
    */
   async publish(ctx: EcosystemContext): Promise<void> {
     if (ctx.dryRun) {
       ctx.log('[dry-run] Would run: npm publish');
       return;
+    }
+
+    // Configure .npmrc if token is provided
+    if (ctx.registry?.npmToken) {
+      await this.configureNpmrc(ctx);
     }
 
     const { exec } = await import('@actions/exec');
@@ -136,8 +79,6 @@ export class NpmEcosystem implements Ecosystem {
 
   /**
    * Update lockfile after version change
-   *
-   * @param ctx - Ecosystem context
    */
   async postVersionUpdate(ctx: EcosystemContext): Promise<void> {
     if (ctx.dryRun) {
@@ -161,13 +102,44 @@ export class NpmEcosystem implements Ecosystem {
   }
 
   /**
-   * Get path to package.json
+   * Parse version from package.json content
    */
-  private getPackagePath(ctx: EcosystemContext): string {
-    if (ctx.versionFile) {
-      return join(ctx.path, ctx.versionFile);
+  protected parseVersion(content: string): string | null {
+    const pkg = JSON.parse(content);
+    return pkg.version ?? null;
+  }
+
+  /**
+   * Update version in package.json content
+   */
+  protected updateVersion(content: string, version: string): string {
+    const pkg = JSON.parse(content);
+    const indent = this.detectIndent(content);
+    pkg.version = version;
+    return JSON.stringify(pkg, null, indent) + '\n';
+  }
+
+  /**
+   * Configure .npmrc for authentication
+   *
+   * Creates a project-level .npmrc with the auth token.
+   * Supports custom registries (e.g., GitHub Packages).
+   */
+  private async configureNpmrc(ctx: EcosystemContext): Promise<void> {
+    const token = ctx.registry?.npmToken;
+    if (!token) {
+      return;
     }
-    return join(ctx.path, 'package.json');
+
+    const registry = ctx.registry?.npmRegistry || 'https://registry.npmjs.org';
+    const registryHost = new URL(registry).host;
+
+    // Format: //registry.npmjs.org/:_authToken=TOKEN
+    const npmrcContent = `//${registryHost}/:_authToken=${token}\n`;
+    const npmrcPath = join(ctx.path, '.npmrc');
+
+    writeFileSync(npmrcPath, npmrcContent);
+    ctx.log(`Configured .npmrc for ${registryHost}`);
   }
 
   /**

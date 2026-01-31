@@ -80,6 +80,9 @@ git:
 | `dev-suffix` | Suffix for dev releases | `dev` |
 | `default-bump` | Default bump when no label | `patch` |
 | `packages` | JSON array of packages (alternative to config file) | - |
+| `npm-token` | NPM registry token for publishing | - |
+| `npm-registry` | NPM registry URL | `https://registry.npmjs.org` |
+| `cargo-token` | Cargo registry token for crates.io | - |
 
 ## Outputs
 
@@ -157,6 +160,69 @@ packages:
         - latest
         - "{version}"
         - "{major}.{minor}"
+```
+
+## Registry Authentication
+
+### NPM
+
+You can authenticate to npm in two ways:
+
+**Option 1: Pass token as input (recommended)**
+
+```yaml
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.NPM_TOKEN }}
+```
+
+**Option 2: Pre-configure .npmrc**
+
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    node-version: 20
+    registry-url: 'https://registry.npmjs.org'
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+**GitHub Packages**
+
+```yaml
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.GITHUB_TOKEN }}
+    npm-registry: 'https://npm.pkg.github.com'
+```
+
+### Cargo (crates.io)
+
+**Option 1: Pass token as input**
+
+```yaml
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    cargo-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+```
+
+**Option 2: Pre-configure credentials**
+
+```yaml
+- name: Configure Cargo
+  run: |
+    mkdir -p ~/.cargo
+    echo "[registry]" >> ~/.cargo/credentials.toml
+    echo "token = \"${{ secrets.CARGO_REGISTRY_TOKEN }}\"" >> ~/.cargo/credentials.toml
+- uses: a-line-services/release-pilot@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## PR Labels
