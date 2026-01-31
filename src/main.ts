@@ -216,7 +216,7 @@ export async function run(): Promise<void> {
 
   // Extract release labels and determine bump type
   const releaseLabels = extractReleaseLabels(recentPRs, config.labels);
-  const { bumpType, skip } = getBumpTypeFromLabels(releaseLabels, config.labels);
+  const { bumpType, skip, prerelease } = getBumpTypeFromLabels(releaseLabels, config.labels);
 
   if (skip) {
     core.info('Release skipped due to skip label');
@@ -237,8 +237,13 @@ export async function run(): Promise<void> {
   // Calculate new version
   let newVersion = bumpVersion(previousVersion, finalBumpType);
 
+  // Apply prerelease suffix if alpha/beta/rc label found
+  if (prerelease) {
+    newVersion = createDevVersion(newVersion, prerelease);
+    core.info(`Prerelease version (${prerelease}): ${newVersion}`);
+  }
   // For dev mode, add prerelease suffix with timestamp
-  if (inputs.mode === 'dev' && config.version.devRelease) {
+  else if (inputs.mode === 'dev' && config.version.devRelease) {
     newVersion = createDevVersion(newVersion, inputs.devSuffix);
     core.info(`Dev version: ${newVersion}`);
   }

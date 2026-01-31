@@ -68,6 +68,9 @@ export interface ResolvedLabelsConfig {
   minor: string;
   patch: string;
   skip: string;
+  alpha: string;
+  beta: string;
+  rc: string;
 }
 
 /**
@@ -139,6 +142,9 @@ const DEFAULT_LABELS: ResolvedLabelsConfig = {
   minor: 'release:minor',
   patch: 'release:patch',
   skip: 'release:skip',
+  alpha: 'release:alpha',
+  beta: 'release:beta',
+  rc: 'release:rc',
 };
 
 const DEFAULT_VERSION: ResolvedVersionConfig = {
@@ -305,6 +311,9 @@ function applyLabelsDefaults(labels?: LabelsConfigType): ResolvedLabelsConfig {
     minor: labels?.minor ?? DEFAULT_LABELS.minor,
     patch: labels?.patch ?? DEFAULT_LABELS.patch,
     skip: labels?.skip ?? DEFAULT_LABELS.skip,
+    alpha: labels?.alpha ?? DEFAULT_LABELS.alpha,
+    beta: labels?.beta ?? DEFAULT_LABELS.beta,
+    rc: labels?.rc ?? DEFAULT_LABELS.rc,
   };
 }
 

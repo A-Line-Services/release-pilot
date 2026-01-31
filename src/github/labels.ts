@@ -9,6 +9,11 @@
 import type { BumpType } from '../core/version.js';
 
 /**
+ * Prerelease type for alpha, beta, rc versions
+ */
+export type PrereleaseType = 'alpha' | 'beta' | 'rc';
+
+/**
  * Configuration for release labels
  */
 export interface LabelConfig {
@@ -20,6 +25,12 @@ export interface LabelConfig {
   patch: string;
   /** Label indicating release should be skipped */
   skip: string;
+  /** Label indicating alpha prerelease */
+  alpha: string;
+  /** Label indicating beta prerelease */
+  beta: string;
+  /** Label indicating release candidate */
+  rc: string;
 }
 
 /**
@@ -38,6 +49,8 @@ export interface BumpTypeResult {
   bumpType: BumpType | null;
   /** Whether release should be skipped due to skip label */
   skip: boolean;
+  /** Prerelease type if alpha/beta/rc label found */
+  prerelease: PrereleaseType | null;
 }
 
 /**
@@ -52,12 +65,23 @@ export interface BumpTypeResult {
  *   major: 'release:major',
  *   minor: 'release:minor',
  *   patch: 'release:patch',
- *   skip: 'release:skip'
+ *   skip: 'release:skip',
+ *   alpha: 'release:alpha',
+ *   beta: 'release:beta',
+ *   rc: 'release:rc'
  * });
  */
 export function extractReleaseLabels(prs: PullRequest[], config: LabelConfig): string[] {
   const releaseLabels = new Set<string>();
-  const validLabels = new Set([config.major, config.minor, config.patch, config.skip]);
+  const validLabels = new Set([
+    config.major,
+    config.minor,
+    config.patch,
+    config.skip,
+    config.alpha,
+    config.beta,
+    config.rc,
+  ]);
 
   for (const pr of prs) {
     for (const label of pr.labels) {
@@ -71,37 +95,44 @@ export function extractReleaseLabels(prs: PullRequest[], config: LabelConfig): s
 }
 
 /**
- * Determine bump type from a list of labels
+ * Determine bump type and prerelease from a list of labels
  *
- * Priority: skip > major > minor > patch
+ * Priority for bump: skip > major > minor > patch
+ * Priority for prerelease: rc > beta > alpha
  *
  * @param labels - List of labels (from extractReleaseLabels)
  * @param config - Label configuration
- * @returns Bump type result with skip flag
+ * @returns Bump type result with skip flag and prerelease type
  *
  * @example
- * const result = getBumpTypeFromLabels(['release:minor', 'release:patch'], config);
- * // { bumpType: 'minor', skip: false }
+ * const result = getBumpTypeFromLabels(['release:minor', 'release:rc'], config);
+ * // { bumpType: 'minor', skip: false, prerelease: 'rc' }
  */
 export function getBumpTypeFromLabels(labels: string[], config: LabelConfig): BumpTypeResult {
   // Check for skip label first
   if (labels.includes(config.skip)) {
-    return { bumpType: null, skip: true };
+    return { bumpType: null, skip: true, prerelease: null };
   }
 
-  // Check for bump types in priority order
+  // Determine bump type in priority order
+  let bumpType: BumpType | null = null;
   if (labels.includes(config.major)) {
-    return { bumpType: 'major', skip: false };
+    bumpType = 'major';
+  } else if (labels.includes(config.minor)) {
+    bumpType = 'minor';
+  } else if (labels.includes(config.patch)) {
+    bumpType = 'patch';
   }
 
-  if (labels.includes(config.minor)) {
-    return { bumpType: 'minor', skip: false };
+  // Determine prerelease type in priority order (rc > beta > alpha)
+  let prerelease: PrereleaseType | null = null;
+  if (labels.includes(config.rc)) {
+    prerelease = 'rc';
+  } else if (labels.includes(config.beta)) {
+    prerelease = 'beta';
+  } else if (labels.includes(config.alpha)) {
+    prerelease = 'alpha';
   }
 
-  if (labels.includes(config.patch)) {
-    return { bumpType: 'patch', skip: false };
-  }
-
-  // No release labels found
-  return { bumpType: null, skip: false };
+  return { bumpType, skip: false, prerelease };
 }

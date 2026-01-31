@@ -152,6 +152,15 @@ export const LabelsConfig = a.object(
 
     /** Label to skip release entirely (default: release:skip) */
     skip: a.optional(a.string()),
+
+    /** Label for alpha prerelease (default: release:alpha) */
+    alpha: a.optional(a.string()),
+
+    /** Label for beta prerelease (default: release:beta) */
+    beta: a.optional(a.string()),
+
+    /** Label for release candidate (default: release:rc) */
+    rc: a.optional(a.string()),
   },
   { id: 'LabelsConfig' }
 );

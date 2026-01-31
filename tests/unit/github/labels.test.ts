@@ -17,6 +17,9 @@ const defaultLabelConfig: LabelConfig = {
   minor: 'release:minor',
   patch: 'release:patch',
   skip: 'release:skip',
+  alpha: 'release:alpha',
+  beta: 'release:beta',
+  rc: 'release:rc',
 };
 
 describe('GitHub labels', () => {
@@ -69,6 +72,9 @@ describe('GitHub labels', () => {
         minor: 'feature',
         patch: 'fix',
         skip: 'no-release',
+        alpha: 'alpha',
+        beta: 'beta',
+        rc: 'rc',
       };
 
       const prs: PullRequest[] = [
@@ -104,6 +110,19 @@ describe('GitHub labels', () => {
 
       expect(labels).toContain('release:skip');
     });
+
+    test('extracts prerelease labels', () => {
+      const prs: PullRequest[] = [
+        { number: 1, labels: ['release:minor', 'release:rc'] },
+        { number: 2, labels: ['release:alpha'] },
+      ];
+
+      const labels = extractReleaseLabels(prs, defaultLabelConfig);
+
+      expect(labels).toContain('release:minor');
+      expect(labels).toContain('release:rc');
+      expect(labels).toContain('release:alpha');
+    });
   });
 
   describe('getBumpTypeFromLabels', () => {
@@ -113,6 +132,7 @@ describe('GitHub labels', () => {
 
       expect(result.bumpType).toBe('major');
       expect(result.skip).toBe(false);
+      expect(result.prerelease).toBeNull();
     });
 
     test('returns minor when minor is highest', () => {
@@ -137,6 +157,7 @@ describe('GitHub labels', () => {
 
       expect(result.bumpType).toBeNull();
       expect(result.skip).toBe(true);
+      expect(result.prerelease).toBeNull();
     });
 
     test('returns null when no release labels', () => {
@@ -145,6 +166,7 @@ describe('GitHub labels', () => {
 
       expect(result.bumpType).toBeNull();
       expect(result.skip).toBe(false);
+      expect(result.prerelease).toBeNull();
     });
 
     test('works with custom label config', () => {
@@ -153,6 +175,9 @@ describe('GitHub labels', () => {
         minor: 'new-feature',
         patch: 'bugfix',
         skip: 'skip-release',
+        alpha: 'prerelease-alpha',
+        beta: 'prerelease-beta',
+        rc: 'prerelease-rc',
       };
 
       const labels = ['new-feature', 'bugfix'];
@@ -167,6 +192,52 @@ describe('GitHub labels', () => {
 
       // Labels should be case-sensitive by default
       expect(result.bumpType).toBeNull();
+    });
+
+    test('detects alpha prerelease', () => {
+      const labels = ['release:minor', 'release:alpha'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.bumpType).toBe('minor');
+      expect(result.prerelease).toBe('alpha');
+    });
+
+    test('detects beta prerelease', () => {
+      const labels = ['release:patch', 'release:beta'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.bumpType).toBe('patch');
+      expect(result.prerelease).toBe('beta');
+    });
+
+    test('detects rc prerelease', () => {
+      const labels = ['release:major', 'release:rc'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.bumpType).toBe('major');
+      expect(result.prerelease).toBe('rc');
+    });
+
+    test('rc takes priority over beta and alpha', () => {
+      const labels = ['release:minor', 'release:alpha', 'release:beta', 'release:rc'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.prerelease).toBe('rc');
+    });
+
+    test('beta takes priority over alpha', () => {
+      const labels = ['release:minor', 'release:alpha', 'release:beta'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.prerelease).toBe('beta');
+    });
+
+    test('prerelease works without bump type label', () => {
+      const labels = ['release:rc'];
+      const result = getBumpTypeFromLabels(labels, defaultLabelConfig);
+
+      expect(result.bumpType).toBeNull();
+      expect(result.prerelease).toBe('rc');
     });
   });
 });

@@ -7,7 +7,8 @@ Framework-agnostic release automation GitHub Action with multi-package and multi
 - **Multi-Ecosystem Support**: npm, cargo (Rust), Python, Go, Composer, Docker, and custom scripts
 - **Multi-Package/Monorepo**: Release multiple packages in dependency order
 - **Label-Based Versioning**: Determine version bumps from PR labels (`release:major`, `release:minor`, `release:patch`)
-- **Dev Releases**: Automatic prerelease versions (e.g., `1.2.3-dev.abc1234`)
+- **Dev Releases**: Automatic prerelease versions (e.g., `1.2.3-dev.ml2fz8yd`)
+- **Prerelease Support**: Alpha, beta, and RC releases via labels
 - **Configurable**: YAML configuration with sensible defaults
 - **Dry Run Mode**: Test releases without making changes
 
@@ -111,7 +112,7 @@ Full release with version bump, tag, and GitHub release:
 
 ### Dev Release
 
-Prerelease version with commit hash (e.g., `1.2.3-dev.abc1234`):
+Prerelease version with base36 timestamp (e.g., `1.2.3-dev.ml2fz8yd`):
 
 ```yaml
 - uses: a-line-services/release-pilot@v1
@@ -229,12 +230,26 @@ You can authenticate to npm in two ways:
 
 Add these labels to your PRs to control version bumps:
 
+### Version Bump Labels
+
 - `release:major` - Breaking changes (1.0.0 -> 2.0.0)
 - `release:minor` - New features (1.0.0 -> 1.1.0)
 - `release:patch` - Bug fixes (1.0.0 -> 1.0.1)
 - `release:skip` - Skip release entirely
 
-The highest priority label wins when multiple are present.
+### Prerelease Labels
+
+- `release:alpha` - Alpha release (1.0.0 -> 1.0.0-alpha.ml2fz8yd)
+- `release:beta` - Beta release (1.0.0 -> 1.0.0-beta.ml2fz8yd)
+- `release:rc` - Release candidate (1.0.0 -> 1.0.0-rc.ml2fz8yd)
+
+Combine with bump labels: `release:minor` + `release:rc` creates `1.1.0-rc.ml2fz8yd`
+
+### Priority
+
+- Bump type: major > minor > patch
+- Prerelease: rc > beta > alpha
+- Skip always wins (no release created)
 
 ## Full Configuration Reference
 
@@ -264,6 +279,9 @@ labels:
   minor: string           # Minor bump label (default: release:minor)
   patch: string           # Patch bump label (default: release:patch)
   skip: string            # Skip release label (default: release:skip)
+  alpha: string           # Alpha prerelease label (default: release:alpha)
+  beta: string            # Beta prerelease label (default: release:beta)
+  rc: string              # Release candidate label (default: release:rc)
 
 version:
   defaultBump: string     # Default bump type (default: patch)
