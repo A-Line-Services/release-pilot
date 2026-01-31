@@ -21,11 +21,3 @@ releaseOrder:
 
 version:
   devRelease: true
-
-publish:
-  # Wait for npm registry to index each package
-  delayBetweenPackages: 30
-
-git:
-  tagPrefix: v
-  commitMessage: "chore(release): v{version}"

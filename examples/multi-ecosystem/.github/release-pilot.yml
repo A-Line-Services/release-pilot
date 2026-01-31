@@ -4,7 +4,6 @@
 packages:
   - name: core
     ecosystem: cargo
-    path: .
 
   - name: node-bindings
     ecosystem: npm
@@ -17,10 +16,3 @@ releaseOrder:
 
 version:
   devRelease: true
-
-publish:
-  delayBetweenPackages: 30
-
-git:
-  tagPrefix: v
-  commitMessage: "chore(release): v{version}"

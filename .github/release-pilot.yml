@@ -1,24 +1,14 @@
 # Release Pilot configuration for itself (dogfooding!)
 #
 # This action uses itself to manage its own releases.
+# GitHub Actions are "published" by pushing tags - the dist/ directory
+# is committed and action.yml references it.
 
 packages:
   - name: release-pilot
     ecosystem: custom
-    # GitHub Actions are "published" by pushing tags
-    # The dist/ directory is committed and the action.yml references it
     updateVersionFile: false
     publish: false
 
 version:
-  defaultBump: patch
   devRelease: true
-  devSuffix: dev
-
-git:
-  tagPrefix: v
-  commitMessage: 'chore(release): {version}'
-
-githubRelease:
-  enabled: true
-  generateNotes: true
