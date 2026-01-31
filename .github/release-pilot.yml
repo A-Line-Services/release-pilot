@@ -21,3 +21,41 @@ cleanup:
   dev:
     all: true
     keep: 3
+
+# Keep version references up to date in README and examples
+versionFiles:
+  enabled: true
+  files:
+    # README.md action references
+    - file: README.md
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    # Example workflow files
+    - file: examples/simple-npm/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/monorepo/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/rust-crate/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/python-package/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/go-module/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/docker-image/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
+    - file: examples/multi-ecosystem/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
