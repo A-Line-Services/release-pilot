@@ -49,6 +49,11 @@ jobs:
       - name: Build
         run: bun run build
 
+      # Force-add dist/ to git (it's gitignored but needed for the action to work)
+      # This ensures the built files are included in the release commit/tag
+      - name: Stage dist for release
+        run: git add -f dist/
+
       - name: Determine release mode
         id: mode
         run: |
