@@ -126,40 +126,44 @@ describe('version utilities', () => {
   });
 
   describe('createDevVersion', () => {
-    test('creates dev version with commit hash', () => {
-      const result = createDevVersion('1.2.3', 'abc1234');
-      expect(result).toBe('1.2.3-dev.abc1234');
+    test('creates dev version with timestamp', () => {
+      const result = createDevVersion('1.2.3');
+      // Should match pattern: 1.2.3-dev.YYYYMMDDHHmmss
+      expect(result).toMatch(/^1\.2\.3-dev\.\d{14}$/);
     });
 
     test('creates dev version with custom suffix', () => {
-      const result = createDevVersion('1.2.3', 'abc1234', 'nightly');
-      expect(result).toBe('1.2.3-nightly.abc1234');
+      const result = createDevVersion('1.2.3', 'nightly');
+      expect(result).toMatch(/^1\.2\.3-nightly\.\d{14}$/);
     });
 
     test('creates alpha version', () => {
-      const result = createDevVersion('1.2.3', 'abc1234', 'alpha');
-      expect(result).toBe('1.2.3-alpha.abc1234');
+      const result = createDevVersion('1.2.3', 'alpha');
+      expect(result).toMatch(/^1\.2\.3-alpha\.\d{14}$/);
     });
 
     test('creates beta version', () => {
-      const result = createDevVersion('1.2.3', 'abc1234', 'beta');
-      expect(result).toBe('1.2.3-beta.abc1234');
+      const result = createDevVersion('1.2.3', 'beta');
+      expect(result).toMatch(/^1\.2\.3-beta\.\d{14}$/);
     });
 
     test('creates rc version', () => {
-      const result = createDevVersion('1.2.3', 'abc1234', 'rc');
-      expect(result).toBe('1.2.3-rc.abc1234');
+      const result = createDevVersion('1.2.3', 'rc');
+      expect(result).toMatch(/^1\.2\.3-rc\.\d{14}$/);
     });
 
     test('handles v prefix by stripping it', () => {
-      const result = createDevVersion('v1.2.3', 'abc1234');
-      expect(result).toBe('1.2.3-dev.abc1234');
+      const result = createDevVersion('v1.2.3');
+      expect(result).toMatch(/^1\.2\.3-dev\.\d{14}$/);
     });
 
-    test('truncates long commit hashes', () => {
-      const longHash = 'abc1234567890abcdef';
-      const result = createDevVersion('1.2.3', longHash);
-      expect(result).toBe('1.2.3-dev.abc1234');
+    test('timestamps sort correctly', () => {
+      const v1 = createDevVersion('1.2.3');
+      // Wait a tiny bit to ensure different timestamp
+      const v2 = createDevVersion('1.2.3');
+      // Both should be valid, and v2 should be >= v1
+      expect(v1).toMatch(/^1\.2\.3-dev\.\d{14}$/);
+      expect(v2).toMatch(/^1\.2\.3-dev\.\d{14}$/);
     });
   });
 

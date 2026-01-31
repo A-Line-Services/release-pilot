@@ -91,23 +91,20 @@ export function bumpVersion(version: string, type: BumpType): string {
 }
 
 /**
- * Create a development/prerelease version
+ * Create a development/prerelease version using timestamp
+ *
+ * Uses YYYYMMDDHHmmss format for proper semver sorting.
  *
  * @param baseVersion - Base version to create dev version from
- * @param commitHash - Git commit hash (will be truncated to 7 chars)
  * @param suffix - Prerelease suffix (default: 'dev')
- * @returns Dev version string (e.g., "1.2.3-dev.abc1234")
+ * @returns Dev version string (e.g., "1.2.3-dev.20260131153000")
  *
  * @example
- * createDevVersion('1.2.3', 'abc1234') // '1.2.3-dev.abc1234'
- * createDevVersion('1.2.3', 'abc1234', 'nightly') // '1.2.3-nightly.abc1234'
- * createDevVersion('1.2.3', 'abc1234', 'alpha') // '1.2.3-alpha.abc1234'
+ * createDevVersion('1.2.3') // '1.2.3-dev.20260131153000'
+ * createDevVersion('1.2.3', 'nightly') // '1.2.3-nightly.20260131153000'
+ * createDevVersion('1.2.3', 'alpha') // '1.2.3-alpha.20260131153000'
  */
-export function createDevVersion(
-  baseVersion: string,
-  commitHash: string,
-  suffix: string = 'dev'
-): string {
+export function createDevVersion(baseVersion: string, suffix: string = 'dev'): string {
   // Strip v prefix if present
   const cleanVersion = baseVersion.replace(/^v/, '');
 
@@ -117,10 +114,14 @@ export function createDevVersion(
     throw new Error(`Invalid version: ${baseVersion}`);
   }
 
-  // Truncate commit hash to 7 characters
-  const shortHash = commitHash.substring(0, 7);
+  // Create timestamp in YYYYMMDDHHmmss format
+  const now = new Date();
+  const timestamp = now
+    .toISOString()
+    .replace(/[-:T]/g, '')
+    .replace(/\.\d+Z$/, '');
 
-  return `${parsed.major}.${parsed.minor}.${parsed.patch}-${suffix}.${shortHash}`;
+  return `${parsed.major}.${parsed.minor}.${parsed.patch}-${suffix}.${timestamp}`;
 }
 
 /**

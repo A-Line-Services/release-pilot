@@ -28,7 +28,6 @@ import {
   formatCommitMessage,
   formatTag,
   type GitOptions,
-  getShortSha,
   parseTagVersion,
   pushToRemote,
   stageFiles,
@@ -238,10 +237,9 @@ export async function run(): Promise<void> {
   // Calculate new version
   let newVersion = bumpVersion(previousVersion, finalBumpType);
 
-  // For dev mode, add prerelease suffix
+  // For dev mode, add prerelease suffix with timestamp
   if (inputs.mode === 'dev' && config.version.devRelease) {
-    const shortSha = await getShortSha({ cwd: process.cwd() });
-    newVersion = createDevVersion(newVersion, shortSha, inputs.devSuffix);
+    newVersion = createDevVersion(newVersion, inputs.devSuffix);
     core.info(`Dev version: ${newVersion}`);
   }
 
