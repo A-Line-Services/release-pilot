@@ -12,3 +12,6 @@ packages:
 
 version:
   devRelease: true
+
+git:
+  floatingTags: true

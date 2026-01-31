@@ -93,6 +93,7 @@ export interface ResolvedGitConfig {
   pushTag: boolean;
   tagPrefix: string;
   commitMessage: string;
+  floatingTags: boolean;
 }
 
 /**
@@ -179,6 +180,7 @@ const DEFAULT_GIT: ResolvedGitConfig = {
   pushTag: true,
   tagPrefix: 'v',
   commitMessage: 'chore(release): {version}',
+  floatingTags: false,
 };
 
 const DEFAULT_PUBLISH: ResolvedPublishConfig = {
@@ -354,6 +356,7 @@ function applyGitDefaults(git?: GitConfigType): ResolvedGitConfig {
     pushTag: git?.pushTag ?? DEFAULT_GIT.pushTag,
     tagPrefix: git?.tagPrefix ?? DEFAULT_GIT.tagPrefix,
     commitMessage: git?.commitMessage ?? DEFAULT_GIT.commitMessage,
+    floatingTags: git?.floatingTags ?? DEFAULT_GIT.floatingTags,
   };
 }
 

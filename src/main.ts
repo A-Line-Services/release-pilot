@@ -31,6 +31,7 @@ import {
   parseTagVersion,
   pushToRemote,
   stageFiles,
+  updateFloatingTags,
 } from './core/git.js';
 import { type BumpType, bumpVersion, createDevVersion } from './core/version.js';
 import { getUpdatedFiles, updateVersionFiles } from './core/version-files.js';
@@ -400,6 +401,13 @@ export async function run(): Promise<void> {
   // Push to remote
   if (config.git.pushVersionCommit || config.git.pushTag) {
     await pushToRemote(gitOptions, config.git.pushTag);
+  }
+
+  // Update floating major/minor tags (e.g., v1, v1.2 for v1.2.3)
+  // Only for stable releases, not dev/prerelease
+  if (config.git.floatingTags && config.git.pushTag && inputs.mode === 'stable') {
+    core.info('Updating floating version tags...');
+    await updateFloatingTags(newVersion, config.git.tagPrefix, gitOptions);
   }
 
   // Create GitHub release

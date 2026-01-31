@@ -199,6 +199,65 @@ export async function pushTag(tag: string, options: GitOptions): Promise<void> {
 }
 
 /**
+ * Update floating major/minor version tags
+ *
+ * For a release like v1.2.3, this creates/updates:
+ * - v1 -> points to v1.2.3
+ * - v1.2 -> points to v1.2.3
+ *
+ * This is useful for GitHub Actions and other tools that support major version tags.
+ *
+ * @param version - The full version (e.g., "1.2.3")
+ * @param tagPrefix - Tag prefix (e.g., "v")
+ * @param options - Git options
+ */
+export async function updateFloatingTags(
+  version: string,
+  tagPrefix: string,
+  options: GitOptions
+): Promise<void> {
+  // Parse version components
+  const parts = version.split('.');
+  if (parts.length < 3) {
+    options.log(`Skipping floating tags: version ${version} doesn't have major.minor.patch format`);
+    return;
+  }
+
+  const [major, minor] = parts;
+  const majorTag = `${tagPrefix}${major}`;
+  const minorTag = `${tagPrefix}${major}.${minor}`;
+
+  if (options.dryRun) {
+    options.log(
+      `[dry-run] Would update floating tags: ${majorTag}, ${minorTag} -> ${tagPrefix}${version}`
+    );
+    return;
+  }
+
+  // Update major tag (e.g., v1 -> v1.2.3)
+  await exec.exec(
+    'git',
+    ['tag', '-fa', majorTag, '-m', `Update ${majorTag} to ${tagPrefix}${version}`],
+    {
+      cwd: options.cwd,
+    }
+  );
+  await exec.exec('git', ['push', 'origin', majorTag, '--force'], { cwd: options.cwd });
+
+  // Update minor tag (e.g., v1.2 -> v1.2.3)
+  await exec.exec(
+    'git',
+    ['tag', '-fa', minorTag, '-m', `Update ${minorTag} to ${tagPrefix}${version}`],
+    {
+      cwd: options.cwd,
+    }
+  );
+  await exec.exec('git', ['push', 'origin', minorTag, '--force'], { cwd: options.cwd });
+
+  options.log(`Updated floating tags: ${majorTag}, ${minorTag} -> ${tagPrefix}${version}`);
+}
+
+/**
  * Get the current commit SHA
  *
  * @param options - Git options (only cwd is used)

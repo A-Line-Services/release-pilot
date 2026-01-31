@@ -61,29 +61,9 @@ jobs:
           fi
 
       # Use ourselves for releasing!
+      # Floating tags (v1, v1.2) are handled automatically via git.floatingTags config
       - name: Release
-        id: release
         uses: ./
         with:
           mode: ${{ steps.mode.outputs.mode }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Update floating major/minor tags (e.g., v1, v1.2 for v1.2.3)
-      - name: Update floating tags
-        if: steps.release.outputs.skipped != 'true' && steps.mode.outputs.mode == 'stable'
-        run: |
-          VERSION="${{ steps.release.outputs.version }}"
-          
-          # Parse version components (remove 'v' prefix if present)
-          VERSION_NUM="${VERSION#v}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
-          
-          # Update major tag (v1 -> v1.2.3)
-          git tag -fa "v${MAJOR}" -m "Update v${MAJOR} to ${VERSION}"
-          git push origin "v${MAJOR}" --force
-          
-          # Update minor tag (v1.2 -> v1.2.3)
-          git tag -fa "v${MAJOR}.${MINOR}" -m "Update v${MAJOR}.${MINOR} to ${VERSION}"
-          git push origin "v${MAJOR}.${MINOR}" --force
-          
-          echo "Updated floating tags: v${MAJOR} and v${MAJOR}.${MINOR} -> ${VERSION}"

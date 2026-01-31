@@ -226,6 +226,13 @@ export const GitConfig = a.object(
      * Default: chore(release): {version}
      */
     commitMessage: a.optional(a.string()),
+
+    /**
+     * Update floating major/minor tags (default: false)
+     * When enabled, releases like v1.2.3 will also update v1 and v1.2 tags.
+     * Useful for GitHub Actions and other tools that support major version tags.
+     */
+    floatingTags: a.optional(a.boolean()),
   },
   { id: 'GitConfig' }
 );
