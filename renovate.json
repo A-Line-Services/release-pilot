@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":automergeMinor", "schedule:weekly"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "automerge": true
+    },
+    {
+      "groupName": "dev dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "groupName": "production dependencies",
+      "matchDepTypes": ["dependencies"],
+      "automerge": false
+    }
+  ]
+}

@@ -33,6 +33,7 @@ import {
   stageFiles,
 } from './core/git.js';
 import { type BumpType, bumpVersion, createDevVersion } from './core/version.js';
+import { getUpdatedFiles, updateVersionFiles } from './core/version-files.js';
 import {
   type EcosystemContext,
   EcosystemRegistry,
@@ -350,6 +351,27 @@ export async function run(): Promise<void> {
     }
 
     releasedPackages.push(pkg.name);
+  }
+
+  // Update version references in configured files (README, docs, etc.)
+  if (config.versionFiles.enabled && config.versionFiles.files.length > 0) {
+    core.info('Updating version references in files...');
+    const versionFileResults = updateVersionFiles(config.versionFiles.files, newVersion, {
+      cwd: process.cwd(),
+      dryRun: inputs.dryRun,
+      log: (msg) => core.info(msg),
+    });
+
+    // Add updated files to staging list
+    const updatedVersionFiles = getUpdatedFiles(versionFileResults);
+    allVersionFiles.push(...updatedVersionFiles);
+
+    // Log any errors
+    for (const result of versionFileResults) {
+      if (result.error) {
+        core.warning(`Failed to update ${result.file}: ${result.error}`);
+      }
+    }
   }
 
   // Stage and commit version changes

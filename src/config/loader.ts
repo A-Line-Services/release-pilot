@@ -22,6 +22,7 @@ import {
   ReleasePilotConfig,
   type ReleasePilotConfigType,
   type VersionConfigType,
+  type VersionFilesConfigType,
 } from './schema.js';
 
 // =============================================================================
@@ -120,6 +121,23 @@ export interface ResolvedChangelogConfig {
 }
 
 /**
+ * Version file update configuration
+ */
+export interface ResolvedVersionFileUpdate {
+  file: string;
+  pattern: string;
+  replace: string;
+}
+
+/**
+ * Version files configuration with all defaults applied
+ */
+export interface ResolvedVersionFilesConfig {
+  enabled: boolean;
+  files: ResolvedVersionFileUpdate[];
+}
+
+/**
  * Complete configuration with all defaults applied
  */
 export interface ResolvedConfig {
@@ -131,6 +149,7 @@ export interface ResolvedConfig {
   publish: ResolvedPublishConfig;
   githubRelease: ResolvedGitHubReleaseConfig;
   changelog: ResolvedChangelogConfig;
+  versionFiles: ResolvedVersionFilesConfig;
 }
 
 // =============================================================================
@@ -251,6 +270,7 @@ export function applyDefaults(config: ReleasePilotConfigType): ResolvedConfig {
     publish: applyPublishDefaults(config.publish),
     githubRelease: applyGitHubReleaseDefaults(config.githubRelease),
     changelog: applyChangelogDefaults(config.changelog),
+    versionFiles: applyVersionFilesDefaults(config.versionFiles),
   };
 }
 
@@ -357,5 +377,18 @@ function applyChangelogDefaults(changelog?: ChangelogConfigType): ResolvedChange
     enabled: changelog?.enabled ?? DEFAULT_CHANGELOG.enabled,
     file: changelog?.file ?? DEFAULT_CHANGELOG.file,
     template: changelog?.template,
+  };
+}
+
+function applyVersionFilesDefaults(
+  versionFiles?: VersionFilesConfigType
+): ResolvedVersionFilesConfig {
+  return {
+    enabled: versionFiles?.enabled ?? false,
+    files: (versionFiles?.files ?? []).map((f) => ({
+      file: f.file,
+      pattern: f.pattern,
+      replace: f.replace,
+    })),
   };
 }

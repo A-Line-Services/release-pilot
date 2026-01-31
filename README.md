@@ -316,7 +316,40 @@ githubRelease:
 changelog:
   enabled: boolean        # Generate changelog (default: false)
   file: string            # Changelog file (default: CHANGELOG.md)
+
+versionFiles:
+  enabled: boolean        # Enable version file updates (default: false)
+  files:                  # List of files to update
+    - file: string        # File path relative to repo root
+      pattern: string     # Regex pattern to match
+      replace: string     # Replacement with {version}, {major}, {minor}, {patch}
 ```
+
+## Version File Updates
+
+Automatically update version references in files like README:
+
+```yaml
+# .github/release-pilot.yml
+versionFiles:
+  enabled: true
+  files:
+    - file: README.md
+      pattern: 'uses: org/action@v[0-9.]+'
+      replace: 'uses: org/action@v{version}'
+    - file: docs/installation.md
+      pattern: 'version: [0-9.]+'
+      replace: 'version: {version}'
+```
+
+### Placeholders
+
+| Placeholder | Description | Example |
+|-------------|-------------|---------|
+| `{version}` | Full version | `1.2.3` |
+| `{major}` | Major version | `1` |
+| `{minor}` | Minor version | `2` |
+| `{patch}` | Patch version | `3` |
 
 ## Examples
 

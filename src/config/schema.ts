@@ -271,6 +271,49 @@ export type GitHubReleaseConfigType = a.infer<typeof GitHubReleaseConfig>;
 // =============================================================================
 
 /**
+ * Configuration for a file that should have version references updated
+ */
+export const VersionFileUpdate = a.object(
+  {
+    /** File path relative to repository root */
+    file: a.string(),
+
+    /**
+     * Regex pattern to match version strings
+     * Must contain a capture group for the version
+     * Example: "uses: org/action@v([0-9.]+)"
+     */
+    pattern: a.string(),
+
+    /**
+     * Replacement template
+     * Use {version}, {major}, {minor}, {patch} placeholders
+     * Example: "uses: org/action@v{version}"
+     */
+    replace: a.string(),
+  },
+  { id: 'VersionFileUpdate' }
+);
+export type VersionFileUpdateType = a.infer<typeof VersionFileUpdate>;
+
+/**
+ * Configuration for updating version references in files
+ */
+export const VersionFilesConfig = a.object(
+  {
+    /** Enable version file updates (default: false) */
+    enabled: a.optional(a.boolean()),
+
+    /** List of files and patterns to update */
+    files: a.optional(a.array(VersionFileUpdate)),
+  },
+  { id: 'VersionFilesConfig' }
+);
+export type VersionFilesConfigType = a.infer<typeof VersionFilesConfig>;
+
+// =============================================================================
+
+/**
  * Configuration for changelog generation (optional feature)
  *
  * TODO: Implement changelog generation as a pluggable feature
@@ -325,6 +368,9 @@ export const ReleasePilotConfig = a.object(
 
     /** Changelog generation configuration */
     changelog: a.optional(ChangelogConfig),
+
+    /** Version file updates configuration */
+    versionFiles: a.optional(VersionFilesConfig),
   },
   {
     id: 'ReleasePilotConfig',
