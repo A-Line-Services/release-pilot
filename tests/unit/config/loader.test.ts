@@ -271,5 +271,71 @@ packages:
       expect(dockerConfig?.tags).toEqual(['latest', '{version}']);
       expect(dockerConfig?.devTags).toEqual(['dev', '{version}']);
     });
+
+    test('applies default versionFiles settings', () => {
+      const config = applyDefaults({});
+
+      expect(config.versionFiles.enabled).toBe(false);
+      expect(config.versionFiles.files).toEqual([]);
+      expect(config.versionFiles.updateOn.stable).toBe(true);
+      expect(config.versionFiles.updateOn.dev).toBe(false);
+      expect(config.versionFiles.updateOn.alpha).toBe(false);
+      expect(config.versionFiles.updateOn.beta).toBe(false);
+      expect(config.versionFiles.updateOn.rc).toBe(false);
+    });
+
+    test('applies default versionFiles.updateOn when enabled without updateOn', () => {
+      const config = applyDefaults({
+        versionFiles: {
+          enabled: true,
+          files: [{ file: 'README.md', pattern: 'v[0-9]+', replace: 'v{major}' }],
+        },
+      });
+
+      expect(config.versionFiles.enabled).toBe(true);
+      expect(config.versionFiles.files).toHaveLength(1);
+      // updateOn should use defaults
+      expect(config.versionFiles.updateOn.stable).toBe(true);
+      expect(config.versionFiles.updateOn.dev).toBe(false);
+      expect(config.versionFiles.updateOn.alpha).toBe(false);
+      expect(config.versionFiles.updateOn.beta).toBe(false);
+      expect(config.versionFiles.updateOn.rc).toBe(false);
+    });
+
+    test('preserves user-provided versionFiles.updateOn values', () => {
+      const config = applyDefaults({
+        versionFiles: {
+          enabled: true,
+          updateOn: {
+            stable: true,
+            rc: true,
+            // dev, alpha, beta not specified - should default to false
+          },
+          files: [{ file: 'README.md', pattern: 'v[0-9]+', replace: 'v{major}' }],
+        },
+      });
+
+      expect(config.versionFiles.updateOn.stable).toBe(true);
+      expect(config.versionFiles.updateOn.rc).toBe(true);
+      expect(config.versionFiles.updateOn.dev).toBe(false);
+      expect(config.versionFiles.updateOn.alpha).toBe(false);
+      expect(config.versionFiles.updateOn.beta).toBe(false);
+    });
+
+    test('allows disabling stable in versionFiles.updateOn', () => {
+      const config = applyDefaults({
+        versionFiles: {
+          enabled: true,
+          updateOn: {
+            stable: false,
+            dev: true,
+          },
+          files: [{ file: 'README.md', pattern: 'v[0-9]+', replace: 'v{major}' }],
+        },
+      });
+
+      expect(config.versionFiles.updateOn.stable).toBe(false);
+      expect(config.versionFiles.updateOn.dev).toBe(true);
+    });
   });
 });

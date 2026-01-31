@@ -310,12 +310,58 @@ export const VersionFileUpdate = a.object(
 export type VersionFileUpdateType = a.infer<typeof VersionFileUpdate>;
 
 /**
+ * Configuration for which release types should trigger version file updates
+ *
+ * All fields are optional and default to false, except `stable` which defaults to true.
+ * This allows updating documentation only for stable releases by default.
+ *
+ * @example
+ * ```yaml
+ * versionFiles:
+ *   enabled: true
+ *   updateOn:
+ *     stable: true   # default: true
+ *     rc: true       # also update for release candidates
+ *   files:
+ *     - file: README.md
+ *       pattern: 'version: [0-9.]+'
+ *       replace: 'version: {version}'
+ * ```
+ */
+export const VersionFilesUpdateOnConfig = a.object(
+  {
+    /** Update version files on stable releases (default: true) */
+    stable: a.optional(a.boolean()),
+
+    /** Update version files on dev releases (default: false) */
+    dev: a.optional(a.boolean()),
+
+    /** Update version files on alpha releases (default: false) */
+    alpha: a.optional(a.boolean()),
+
+    /** Update version files on beta releases (default: false) */
+    beta: a.optional(a.boolean()),
+
+    /** Update version files on release candidate releases (default: false) */
+    rc: a.optional(a.boolean()),
+  },
+  { id: 'VersionFilesUpdateOnConfig' }
+);
+export type VersionFilesUpdateOnConfigType = a.infer<typeof VersionFilesUpdateOnConfig>;
+
+/**
  * Configuration for updating version references in files
  */
 export const VersionFilesConfig = a.object(
   {
     /** Enable version file updates (default: false) */
     enabled: a.optional(a.boolean()),
+
+    /**
+     * Which release types should trigger version file updates
+     * By default, only stable releases update version files.
+     */
+    updateOn: a.optional(VersionFilesUpdateOnConfig),
 
     /** List of files and patterns to update */
     files: a.optional(a.array(VersionFileUpdate)),

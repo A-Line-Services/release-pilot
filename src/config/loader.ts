@@ -25,6 +25,7 @@ import {
   type ReleasePilotConfigType,
   type VersionConfigType,
   type VersionFilesConfigType,
+  type VersionFilesUpdateOnConfigType,
 } from './schema.js';
 
 // =============================================================================
@@ -134,10 +135,22 @@ export interface ResolvedVersionFileUpdate {
 }
 
 /**
+ * Configuration for which release types trigger version file updates
+ */
+export interface ResolvedVersionFilesUpdateOnConfig {
+  stable: boolean;
+  dev: boolean;
+  alpha: boolean;
+  beta: boolean;
+  rc: boolean;
+}
+
+/**
  * Version files configuration with all defaults applied
  */
 export interface ResolvedVersionFilesConfig {
   enabled: boolean;
+  updateOn: ResolvedVersionFilesUpdateOnConfig;
   files: ResolvedVersionFileUpdate[];
 }
 
@@ -437,11 +450,24 @@ function applyChangelogDefaults(changelog?: ChangelogConfigType): ResolvedChange
   };
 }
 
+function applyVersionFilesUpdateOnDefaults(
+  updateOn?: VersionFilesUpdateOnConfigType
+): ResolvedVersionFilesUpdateOnConfig {
+  return {
+    stable: updateOn?.stable ?? true,
+    dev: updateOn?.dev ?? false,
+    alpha: updateOn?.alpha ?? false,
+    beta: updateOn?.beta ?? false,
+    rc: updateOn?.rc ?? false,
+  };
+}
+
 function applyVersionFilesDefaults(
   versionFiles?: VersionFilesConfigType
 ): ResolvedVersionFilesConfig {
   return {
     enabled: versionFiles?.enabled ?? false,
+    updateOn: applyVersionFilesUpdateOnDefaults(versionFiles?.updateOn),
     files: (versionFiles?.files ?? []).map((f) => ({
       file: f.file,
       pattern: f.pattern,
