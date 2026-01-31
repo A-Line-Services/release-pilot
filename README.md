@@ -175,14 +175,14 @@ packages:
 
 ## Registry Authentication
 
-For detailed authentication guides for each ecosystem, see the [Authentication Documentation](https://release-pilot.a-line.be/auth/):
+For detailed authentication guides for each ecosystem, see the [Authentication Documentation](https://release-pilot.a-line.be/authentication/):
 
-- [NPM / Node.js](https://release-pilot.a-line.be/auth/npm)
-- [Cargo / Rust](https://release-pilot.a-line.be/auth/cargo)
-- [PyPI / Python](https://release-pilot.a-line.be/auth/python)
-- [Docker](https://release-pilot.a-line.be/auth/docker)
-- [Go](https://release-pilot.a-line.be/auth/go)
-- [Composer / PHP](https://release-pilot.a-line.be/auth/composer)
+- [NPM / Node.js](https://release-pilot.a-line.be/authentication/npm.html)
+- [Cargo / Rust](https://release-pilot.a-line.be/authentication/cargo.html)
+- [PyPI / Python](https://release-pilot.a-line.be/authentication/python.html)
+- [Docker](https://release-pilot.a-line.be/authentication/docker.html)
+- [Go](https://release-pilot.a-line.be/authentication/go.html)
+- [Composer / PHP](https://release-pilot.a-line.be/authentication/composer.html)
 
 ## PR Labels
 
