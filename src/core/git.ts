@@ -7,18 +7,12 @@
  */
 
 import * as exec from '@actions/exec';
+import type { BaseOperationOptions } from './types.js';
 
 /**
  * Options for git operations
  */
-export interface GitOptions {
-  /** Working directory for git commands */
-  cwd: string;
-  /** Whether to skip actual execution (dry run) */
-  dryRun: boolean;
-  /** Logger function */
-  log: (message: string) => void;
-}
+export type GitOptions = BaseOperationOptions;
 
 /**
  * Format a commit message by replacing placeholders

@@ -1,20 +1,10 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
   schedule:
     # Every Monday at 9:00 UTC
     - cron: '0 9 * * 1'
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Release mode'
-        type: choice
-        options:
-          - stable
-          - dev
-        default: stable
 
 concurrency:
   group: release
@@ -28,8 +18,6 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    # Skip if this is a version bump commit
-    if: "!contains(github.event.head_commit.message, 'chore(release):')"
 
     steps:
       - uses: actions/checkout@v4
@@ -54,21 +42,9 @@ jobs:
       - name: Stage dist for release
         run: git add -f dist/
 
-      - name: Determine release mode
-        id: mode
-        run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "mode=stable" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
-          else
-            echo "mode=dev" >> $GITHUB_OUTPUT
-          fi
-
       # Use ourselves for releasing!
       # Floating tags (v1, v1.2) are handled automatically via git.floatingTags config
       - name: Release
         uses: ./
         with:
-          mode: ${{ steps.mode.outputs.mode }}
           github-token: ${{ secrets.GITHUB_TOKEN }}

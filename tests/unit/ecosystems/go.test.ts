@@ -2,33 +2,13 @@
  * Tests for Go ecosystem implementation
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import type { EcosystemContext } from '../../../src/ecosystems/base.js';
+import { describe, expect, test } from 'bun:test';
 import { GoEcosystem } from '../../../src/ecosystems/go.js';
-
-const TEST_DIR = join(import.meta.dir, '../../fixtures/go-test');
-
-function createContext(path: string, options: Partial<EcosystemContext> = {}): EcosystemContext {
-  return {
-    path,
-    dryRun: false,
-    log: () => {},
-    ...options,
-  };
-}
+import { createContext, createTestProject, useTestDir } from '../../helpers/index.js';
 
 describe('GoEcosystem', () => {
   const go = new GoEcosystem();
-
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('go-test');
 
   describe('properties', () => {
     test('has correct name', () => {
@@ -38,29 +18,21 @@ describe('GoEcosystem', () => {
 
   describe('detect', () => {
     test('detects go.mod', async () => {
-      const projectDir = join(TEST_DIR, 'detect-test');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'go.mod'), 'module example.com/test\n\ngo 1.21');
-
-      expect(await go.detect(projectDir)).toBe(true);
+      const project = createTestProject(TEST_DIR, 'detect-test').withGoMod();
+      expect(await go.detect(project.path)).toBe(true);
     });
 
     test('returns false when no go.mod', async () => {
-      const emptyDir = join(TEST_DIR, 'empty');
-      mkdirSync(emptyDir, { recursive: true });
-
-      expect(await go.detect(emptyDir)).toBe(false);
+      const project = createTestProject(TEST_DIR, 'empty');
+      expect(await go.detect(project.path)).toBe(false);
     });
   });
 
   describe('readVersion', () => {
     test('returns 0.0.0 (Go uses git tags)', async () => {
-      const projectDir = join(TEST_DIR, 'read-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'go.mod'), 'module example.com/test\n\ngo 1.21');
+      const project = createTestProject(TEST_DIR, 'read-version').withGoMod();
 
-      const version = await go.readVersion(createContext(projectDir));
-
+      const version = await go.readVersion(createContext(project.path));
       // Go uses git tags for versioning, so this always returns 0.0.0
       expect(version).toBe('0.0.0');
     });
@@ -68,26 +40,19 @@ describe('GoEcosystem', () => {
 
   describe('writeVersion', () => {
     test('is a no-op (Go uses git tags)', async () => {
-      const projectDir = join(TEST_DIR, 'write-version');
-      mkdirSync(projectDir, { recursive: true });
-      const goModContent = 'module example.com/test\n\ngo 1.21';
-      writeFileSync(join(projectDir, 'go.mod'), goModContent);
+      const project = createTestProject(TEST_DIR, 'write-version').withGoMod();
 
       // This should not throw
-      await go.writeVersion(createContext(projectDir), '2.0.0');
-
+      await go.writeVersion(createContext(project.path), '2.0.0');
       // go.mod should remain unchanged (Go versioning is via git tags)
     });
   });
 
   describe('getVersionFiles', () => {
     test('returns go.mod', async () => {
-      const projectDir = join(TEST_DIR, 'version-files');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'go.mod'), 'module example.com/test');
+      const project = createTestProject(TEST_DIR, 'version-files').withGoMod();
 
-      const files = await go.getVersionFiles(createContext(projectDir));
-
+      const files = await go.getVersionFiles(createContext(project.path));
       expect(files).toContain('go.mod');
     });
   });

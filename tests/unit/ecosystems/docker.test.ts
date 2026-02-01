@@ -2,14 +2,12 @@
  * Tests for Docker ecosystem implementation
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { describe, expect, test } from 'bun:test';
 import { DockerEcosystem, type DockerEcosystemContext } from '../../../src/ecosystems/docker.js';
+import { createTestProject, useTestDir } from '../../helpers/index.js';
 
-const TEST_DIR = join(import.meta.dir, '../../fixtures/docker-test');
-
-function createContext(
+/** Create a DockerEcosystemContext for testing */
+function createDockerContext(
   path: string,
   options: Partial<DockerEcosystemContext> = {}
 ): DockerEcosystemContext {
@@ -23,14 +21,7 @@ function createContext(
 
 describe('DockerEcosystem', () => {
   const docker = new DockerEcosystem();
-
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('docker-test');
 
   describe('properties', () => {
     test('has correct name', () => {
@@ -40,29 +31,21 @@ describe('DockerEcosystem', () => {
 
   describe('detect', () => {
     test('detects Dockerfile', async () => {
-      const projectDir = join(TEST_DIR, 'detect-test');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
-
-      expect(await docker.detect(projectDir)).toBe(true);
+      const project = createTestProject(TEST_DIR, 'detect-test').withDockerfile();
+      expect(await docker.detect(project.path)).toBe(true);
     });
 
     test('returns false when no Dockerfile', async () => {
-      const emptyDir = join(TEST_DIR, 'empty');
-      mkdirSync(emptyDir, { recursive: true });
-
-      expect(await docker.detect(emptyDir)).toBe(false);
+      const project = createTestProject(TEST_DIR, 'empty');
+      expect(await docker.detect(project.path)).toBe(false);
     });
   });
 
   describe('readVersion', () => {
     test('returns 0.0.0 (Docker uses image tags)', async () => {
-      const projectDir = join(TEST_DIR, 'read-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'read-version').withDockerfile();
 
-      const version = await docker.readVersion(createContext(projectDir));
-
+      const version = await docker.readVersion(createDockerContext(project.path));
       // Docker uses image tags for versioning
       expect(version).toBe('0.0.0');
     });
@@ -70,33 +53,29 @@ describe('DockerEcosystem', () => {
 
   describe('writeVersion', () => {
     test('is a no-op (Docker uses image tags)', async () => {
-      const projectDir = join(TEST_DIR, 'write-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'write-version').withDockerfile();
 
       // This should not throw
-      await docker.writeVersion(createContext(projectDir), '2.0.0');
+      await docker.writeVersion(createDockerContext(project.path), '2.0.0');
     });
   });
 
   describe('getVersionFiles', () => {
     test('returns Dockerfile by default', async () => {
-      const projectDir = join(TEST_DIR, 'version-files');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'version-files').withDockerfile();
 
-      const files = await docker.getVersionFiles(createContext(projectDir));
-
+      const files = await docker.getVersionFiles(createDockerContext(project.path));
       expect(files).toContain('Dockerfile');
     });
 
     test('returns custom dockerfile from config', async () => {
-      const projectDir = join(TEST_DIR, 'custom-dockerfile');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile.prod'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'custom-dockerfile').withFile(
+        'Dockerfile.prod',
+        'FROM node:20-alpine'
+      );
 
       const files = await docker.getVersionFiles(
-        createContext(projectDir, {
+        createDockerContext(project.path, {
           docker: {
             registry: 'ghcr.io',
             image: 'org/app',
@@ -116,23 +95,19 @@ describe('DockerEcosystem', () => {
 
   describe('publish', () => {
     test('throws when docker config is missing', async () => {
-      const projectDir = join(TEST_DIR, 'no-config');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'no-config').withDockerfile();
 
-      await expect(docker.publish(createContext(projectDir))).rejects.toThrow(
+      await expect(docker.publish(createDockerContext(project.path))).rejects.toThrow(
         'Docker configuration is required'
       );
     });
 
     test('skips in dry run mode', async () => {
-      const projectDir = join(TEST_DIR, 'dry-run');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Dockerfile'), 'FROM node:20-alpine');
+      const project = createTestProject(TEST_DIR, 'dry-run').withDockerfile();
 
       // Should not throw in dry run mode
       await docker.publish(
-        createContext(projectDir, {
+        createDockerContext(project.path, {
           dryRun: true,
           docker: {
             registry: 'ghcr.io',

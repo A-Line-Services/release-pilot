@@ -26,6 +26,8 @@ export interface ReleaseInfo {
  */
 export interface PullRequestInfo {
   number: number;
+  title: string;
+  author: string | null;
   mergedAt: string | null;
   labels: string[];
 }
@@ -115,6 +117,8 @@ export class GitHubClient {
 
     return pulls.map((pr) => ({
       number: pr.number,
+      title: pr.title,
+      author: pr.user?.login ?? null,
       mergedAt: pr.merged_at,
       labels: pr.labels.map((l) => l.name || ''),
     }));

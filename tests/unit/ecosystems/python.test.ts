@@ -2,33 +2,15 @@
  * Tests for Python ecosystem implementation
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { EcosystemContext } from '../../../src/ecosystems/base.js';
 import { PythonEcosystem } from '../../../src/ecosystems/python.js';
-
-const TEST_DIR = join(import.meta.dir, '../../fixtures/python-test');
-
-function createContext(path: string, options: Partial<EcosystemContext> = {}): EcosystemContext {
-  return {
-    path,
-    dryRun: false,
-    log: () => {},
-    ...options,
-  };
-}
+import { createContext, createTestProject, useTestDir } from '../../helpers/index.js';
 
 describe('PythonEcosystem', () => {
   const python = new PythonEcosystem();
-
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('python-test');
 
   describe('properties', () => {
     test('has correct name', () => {
@@ -38,59 +20,40 @@ describe('PythonEcosystem', () => {
 
   describe('detect', () => {
     test('detects pyproject.toml', async () => {
-      const projectDir = join(TEST_DIR, 'detect-test');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'pyproject.toml'), '[project]\nname = "test"');
-
-      expect(await python.detect(projectDir)).toBe(true);
+      const project = createTestProject(TEST_DIR, 'detect-test').withPyprojectToml();
+      expect(await python.detect(project.path)).toBe(true);
     });
 
     test('returns false when no pyproject.toml', async () => {
-      const emptyDir = join(TEST_DIR, 'empty');
-      mkdirSync(emptyDir, { recursive: true });
-
-      expect(await python.detect(emptyDir)).toBe(false);
+      const project = createTestProject(TEST_DIR, 'empty');
+      expect(await python.detect(project.path)).toBe(false);
     });
   });
 
   describe('readVersion', () => {
     test('reads version from [project] section', async () => {
-      const projectDir = join(TEST_DIR, 'read-project');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
-        `[project]
-name = "test"
-version = "1.2.3"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'read-project').withPyprojectToml({
+        version: '1.2.3',
+      });
 
-      const version = await python.readVersion(createContext(projectDir));
-
+      const version = await python.readVersion(createContext(project.path));
       expect(version).toBe('1.2.3');
     });
 
     test('reads version from [tool.poetry] section', async () => {
-      const projectDir = join(TEST_DIR, 'read-poetry');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
+      const project = createTestProject(TEST_DIR, 'read-poetry').withPyprojectToml(
         `[tool.poetry]
 name = "test"
 version = "2.0.0"
 `
       );
 
-      const version = await python.readVersion(createContext(projectDir));
-
+      const version = await python.readVersion(createContext(project.path));
       expect(version).toBe('2.0.0');
     });
 
     test('prefers [project] over [tool.poetry]', async () => {
-      const projectDir = join(TEST_DIR, 'read-both');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
+      const project = createTestProject(TEST_DIR, 'read-both').withPyprojectToml(
         `[project]
 name = "test"
 version = "1.0.0"
@@ -101,65 +64,48 @@ version = "2.0.0"
 `
       );
 
-      const version = await python.readVersion(createContext(projectDir));
-
+      const version = await python.readVersion(createContext(project.path));
       expect(version).toBe('1.0.0');
     });
 
     test('throws when version is missing', async () => {
-      const projectDir = join(TEST_DIR, 'no-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
-        `[project]
-name = "test"
-`
+      const project = createTestProject(TEST_DIR, 'no-version').withFile(
+        'pyproject.toml',
+        `[project]\nname = "test"\n`
       );
 
-      await expect(python.readVersion(createContext(projectDir))).rejects.toThrow();
+      await expect(python.readVersion(createContext(project.path))).rejects.toThrow();
     });
   });
 
   describe('writeVersion', () => {
     test('writes version to [project] section', async () => {
-      const projectDir = join(TEST_DIR, 'write-project');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
-        `[project]
-name = "test"
-version = "1.0.0"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'write-project').withPyprojectToml({
+        version: '1.0.0',
+      });
 
-      await python.writeVersion(createContext(projectDir), '2.0.0');
+      await python.writeVersion(createContext(project.path), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'pyproject.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'pyproject.toml'), 'utf-8');
       expect(content).toContain('version = "2.0.0"');
     });
 
     test('writes version to [tool.poetry] section', async () => {
-      const projectDir = join(TEST_DIR, 'write-poetry');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
+      const project = createTestProject(TEST_DIR, 'write-poetry').withPyprojectToml(
         `[tool.poetry]
 name = "test"
 version = "1.0.0"
 `
       );
 
-      await python.writeVersion(createContext(projectDir), '2.0.0');
+      await python.writeVersion(createContext(project.path), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'pyproject.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'pyproject.toml'), 'utf-8');
       expect(content).toContain('version = "2.0.0"');
     });
 
     test('preserves other fields', async () => {
-      const projectDir = join(TEST_DIR, 'preserve-fields');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
+      const project = createTestProject(TEST_DIR, 'preserve-fields').withPyprojectToml(
         `[project]
 name = "test"
 version = "1.0.0"
@@ -170,63 +116,50 @@ requests = ">=2.0"
 `
       );
 
-      await python.writeVersion(createContext(projectDir), '1.1.0');
+      await python.writeVersion(createContext(project.path), '1.1.0');
 
-      const content = readFileSync(join(projectDir, 'pyproject.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'pyproject.toml'), 'utf-8');
       expect(content).toContain('name = "test"');
       expect(content).toContain('description = "A test package"');
       expect(content).toContain('requests = ">=2.0"');
     });
 
     test('skips write in dry run mode', async () => {
-      const projectDir = join(TEST_DIR, 'dry-run');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'pyproject.toml'),
-        `[project]
-name = "test"
-version = "1.0.0"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'dry-run').withPyprojectToml({
+        version: '1.0.0',
+      });
 
-      await python.writeVersion(createContext(projectDir, { dryRun: true }), '2.0.0');
+      await python.writeVersion(createContext(project.path, { dryRun: true }), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'pyproject.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'pyproject.toml'), 'utf-8');
       expect(content).toContain('version = "1.0.0"');
     });
   });
 
   describe('getVersionFiles', () => {
     test('returns pyproject.toml', async () => {
-      const projectDir = join(TEST_DIR, 'version-files');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'pyproject.toml'), '[project]');
+      const project = createTestProject(TEST_DIR, 'version-files').withPyprojectToml();
 
-      const files = await python.getVersionFiles(createContext(projectDir));
-
+      const files = await python.getVersionFiles(createContext(project.path));
       expect(files).toContain('pyproject.toml');
     });
 
     test('includes uv.lock if exists', async () => {
-      const projectDir = join(TEST_DIR, 'with-uv-lock');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'pyproject.toml'), '[project]');
-      writeFileSync(join(projectDir, 'uv.lock'), '');
+      const project = createTestProject(TEST_DIR, 'with-uv-lock')
+        .withPyprojectToml()
+        .withFile('uv.lock', '');
 
-      const files = await python.getVersionFiles(createContext(projectDir));
-
+      const files = await python.getVersionFiles(createContext(project.path));
       expect(files).toContain('pyproject.toml');
       expect(files).toContain('uv.lock');
     });
 
     test('includes poetry.lock if exists', async () => {
-      const projectDir = join(TEST_DIR, 'with-poetry-lock');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'pyproject.toml'), '[project]');
-      writeFileSync(join(projectDir, 'poetry.lock'), '');
+      const project = createTestProject(TEST_DIR, 'with-poetry-lock')
+        .withPyprojectToml()
+        .withFile('poetry.lock', '');
 
-      const files = await python.getVersionFiles(createContext(projectDir));
-
+      const files = await python.getVersionFiles(createContext(project.path));
       expect(files).toContain('poetry.lock');
     });
   });

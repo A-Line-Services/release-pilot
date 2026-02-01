@@ -15,6 +15,7 @@ import type {
 } from '../config/loader.js';
 import type { EcosystemContext, EcosystemRegistry, RegistryConfig } from '../ecosystems/base.js';
 import type { GitHubClient, ReleaseInfo } from '../github/client.js';
+import type { BaseOperationOptionsWithWarn } from './types.js';
 
 /**
  * Release type identifiers
@@ -24,15 +25,7 @@ export type ReleaseType = 'dev' | 'alpha' | 'beta' | 'rc' | 'stable';
 /**
  * Options for cleanup operations
  */
-export interface CleanupOptions {
-  /** Working directory for git commands */
-  cwd: string;
-  /** Whether to skip actual execution (dry run) */
-  dryRun: boolean;
-  /** Logger function */
-  log: (message: string) => void;
-  /** Warning logger */
-  warn: (message: string) => void;
+export interface CleanupOptions extends BaseOperationOptionsWithWarn {
   /** Packages to clean up published versions from */
   packages?: ResolvedPackageConfig[];
   /** Ecosystem registry for unpublishing */

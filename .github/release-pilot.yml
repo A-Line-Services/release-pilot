@@ -12,17 +12,13 @@ packages:
     updateVersionFile: true
     publish: false
 
-version:
-  devRelease: true
-
 git:
   floatingTags: true
 
-cleanup:
+# Generate CHANGELOG.md from merged PRs
+changelog:
   enabled: true
-  dev:
-    all: true
-    keep: 3
+  file: CHANGELOG.md
 
 # Keep version references up to date in README and examples
 versionFiles:

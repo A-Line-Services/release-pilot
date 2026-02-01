@@ -22,6 +22,7 @@ import {
   type ResolvedPackageConfig,
   type ResolvedVersionFilesUpdateOnConfig,
 } from './config/loader.js';
+import { type ChangelogPR, updateChangelog } from './core/changelog.js';
 import { runCleanup } from './core/cleanup.js';
 import {
   configureGitUser,
@@ -215,6 +216,8 @@ export async function run(): Promise<void> {
   const recentPRs = filterPRsSinceDate(
     mergedPRs.map((pr) => ({
       number: pr.number,
+      title: pr.title,
+      author: pr.author,
       mergedAt: pr.mergedAt,
       labels: pr.labels,
     })),
@@ -380,11 +383,11 @@ export async function run(): Promise<void> {
 
   if (shouldUpdateVersionFiles) {
     core.info('Updating version references in files...');
-    const versionFileResults = updateVersionFiles(config.versionFiles.files, newVersion, {
-      cwd: process.cwd(),
-      dryRun: inputs.dryRun,
-      log: (msg) => core.info(msg),
-    });
+    const versionFileResults = updateVersionFiles(
+      config.versionFiles.files,
+      newVersion,
+      gitOptions
+    );
 
     // Add updated files to staging list
     const updatedVersionFiles = getUpdatedFiles(versionFileResults);
@@ -400,6 +403,31 @@ export async function run(): Promise<void> {
     core.info(
       `Skipping version file updates for ${releaseType} release (updateOn.${releaseType}: false)`
     );
+  }
+
+  // Generate changelog if enabled
+  if (config.changelog.enabled) {
+    core.info('Generating changelog...');
+
+    // Convert PR info to changelog format (data preserved from filterPRsSinceDate)
+    const changelogPRs: ChangelogPR[] = recentPRs.map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      author: pr.author ?? undefined,
+      labels: pr.labels,
+    }));
+
+    const changelogResult = updateChangelog(config.changelog, newVersion, changelogPRs, {
+      ...gitOptions,
+      repoOwner: gh.getOwner(),
+      repoName: gh.getRepo(),
+    });
+
+    if (changelogResult.error) {
+      core.warning(`Failed to update ${config.changelog.file}: ${changelogResult.error}`);
+    } else if (changelogResult.updated) {
+      allVersionFiles.push(config.changelog.file);
+    }
   }
 
   // Stage and commit version changes
@@ -481,9 +509,7 @@ export async function run(): Promise<void> {
   if (config.cleanup.enabled) {
     core.info('Running cleanup of old releases...');
     const cleanupResult = await runCleanup(gh, config.cleanup, config.git.tagPrefix, {
-      cwd: process.cwd(),
-      dryRun: inputs.dryRun,
-      log: (msg) => core.info(msg),
+      ...gitOptions,
       warn: (msg) => core.warning(msg),
       packages,
       ecosystemRegistry: registry,

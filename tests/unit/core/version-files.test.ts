@@ -2,8 +2,8 @@
  * Tests for version file updates
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { describe, expect, test } from 'bun:test';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   applyVersionTemplate,
@@ -12,17 +12,10 @@ import {
   updateVersionFile,
   updateVersionFiles,
 } from '../../../src/core/version-files.js';
-
-const TEST_DIR = join(import.meta.dir, '../../fixtures/version-files-test');
+import { createTestProject, useTestDir } from '../../helpers/index.js';
 
 describe('version-files', () => {
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('version-files-test');
 
   describe('parseVersionParts', () => {
     test('parses simple version', () => {
@@ -94,46 +87,52 @@ describe('version-files', () => {
   });
 
   describe('updateVersionFile', () => {
+    const defaultOptions = { cwd: TEST_DIR, dryRun: false, log: () => {} };
+
     test('updates version in file', () => {
-      const testFile = join(TEST_DIR, 'test-readme.md');
-      writeFileSync(testFile, 'uses: org/action@v1.0.0\nsome other content');
+      const project = createTestProject(TEST_DIR, 'update-test').withFile(
+        'README.md',
+        'uses: org/action@v1.0.0\nsome other content'
+      );
 
       const result = updateVersionFile(
         {
-          file: 'test-readme.md',
+          file: 'update-test/README.md',
           pattern: 'uses: org/action@v[0-9.]+',
           replace: 'uses: org/action@v{version}',
         },
         '2.0.0',
-        { cwd: TEST_DIR, dryRun: false, log: () => {} }
+        defaultOptions
       );
 
       expect(result.updated).toBe(true);
       expect(result.matches).toBe(1);
       expect(result.error).toBeUndefined();
 
-      const content = readFileSync(testFile, 'utf-8');
+      const content = readFileSync(join(project.path, 'README.md'), 'utf-8');
       expect(content).toBe('uses: org/action@v2.0.0\nsome other content');
     });
 
     test('handles multiple matches', () => {
-      const testFile = join(TEST_DIR, 'multi-match.md');
-      writeFileSync(testFile, 'v1.0.0 and v1.0.0 again');
+      const project = createTestProject(TEST_DIR, 'multi-match').withFile(
+        'file.md',
+        'v1.0.0 and v1.0.0 again'
+      );
 
       const result = updateVersionFile(
         {
-          file: 'multi-match.md',
+          file: 'multi-match/file.md',
           pattern: 'v[0-9.]+',
           replace: 'v{version}',
         },
         '2.0.0',
-        { cwd: TEST_DIR, dryRun: false, log: () => {} }
+        defaultOptions
       );
 
       expect(result.updated).toBe(true);
       expect(result.matches).toBe(2);
 
-      const content = readFileSync(testFile, 'utf-8');
+      const content = readFileSync(join(project.path, 'file.md'), 'utf-8');
       expect(content).toBe('v2.0.0 and v2.0.0 again');
     });
 
@@ -145,7 +144,7 @@ describe('version-files', () => {
           replace: 'v{version}',
         },
         '2.0.0',
-        { cwd: TEST_DIR, dryRun: false, log: () => {} }
+        defaultOptions
       );
 
       expect(result.updated).toBe(false);
@@ -153,17 +152,16 @@ describe('version-files', () => {
     });
 
     test('returns error for pattern not found', () => {
-      const testFile = join(TEST_DIR, 'no-match.md');
-      writeFileSync(testFile, 'no version here');
+      createTestProject(TEST_DIR, 'no-match').withFile('file.md', 'no version here');
 
       const result = updateVersionFile(
         {
-          file: 'no-match.md',
+          file: 'no-match/file.md',
           pattern: 'v[0-9.]+',
           replace: 'v{version}',
         },
         '2.0.0',
-        { cwd: TEST_DIR, dryRun: false, log: () => {} }
+        defaultOptions
       );
 
       expect(result.updated).toBe(false);
@@ -171,13 +169,12 @@ describe('version-files', () => {
     });
 
     test('dry run does not modify file', () => {
-      const testFile = join(TEST_DIR, 'dry-run.md');
-      writeFileSync(testFile, 'v1.0.0');
+      const project = createTestProject(TEST_DIR, 'dry-run').withFile('file.md', 'v1.0.0');
 
       const logs: string[] = [];
       const result = updateVersionFile(
         {
-          file: 'dry-run.md',
+          file: 'dry-run/file.md',
           pattern: 'v[0-9.]+',
           replace: 'v{version}',
         },
@@ -188,22 +185,20 @@ describe('version-files', () => {
       expect(result.updated).toBe(true);
       expect(logs[0]).toContain('[dry-run]');
 
-      const content = readFileSync(testFile, 'utf-8');
+      const content = readFileSync(join(project.path, 'file.md'), 'utf-8');
       expect(content).toBe('v1.0.0'); // Unchanged
     });
   });
 
   describe('updateVersionFiles', () => {
     test('updates multiple files', () => {
-      const file1 = join(TEST_DIR, 'multi1.md');
-      const file2 = join(TEST_DIR, 'multi2.md');
-      writeFileSync(file1, 'v1.0.0');
-      writeFileSync(file2, 'version: 1.0.0');
+      createTestProject(TEST_DIR, 'multi1').withFile('file.md', 'v1.0.0');
+      createTestProject(TEST_DIR, 'multi2').withFile('file.md', 'version: 1.0.0');
 
       const results = updateVersionFiles(
         [
-          { file: 'multi1.md', pattern: 'v[0-9.]+', replace: 'v{version}' },
-          { file: 'multi2.md', pattern: 'version: [0-9.]+', replace: 'version: {version}' },
+          { file: 'multi1/file.md', pattern: 'v[0-9.]+', replace: 'v{version}' },
+          { file: 'multi2/file.md', pattern: 'version: [0-9.]+', replace: 'version: {version}' },
         ],
         '2.0.0',
         { cwd: TEST_DIR, dryRun: false, log: () => {} }
