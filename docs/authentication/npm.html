@@ -24,7 +24,6 @@
     </div>
     <pre><code>- uses: a-line-services/release-pilot@v1
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     npm-token: ${{ secrets.NPM_TOKEN }}</code></pre>
     
     <h3>Getting an NPM Token</h3>
@@ -43,8 +42,6 @@
     registry-url: 'https://registry.npmjs.org'
 
 - uses: a-line-services/release-pilot@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}</code></pre>
 
@@ -52,7 +49,6 @@
     <p>To publish to GitHub Packages instead of npm:</p>
     <pre><code>- uses: a-line-services/release-pilot@v1
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     npm-token: ${{ secrets.GITHUB_TOKEN }}
     npm-registry: 'https://npm.pkg.github.com'</code></pre>
     
@@ -71,7 +67,6 @@
     <p>For private npm registries (Verdaccio, Artifactory, etc.):</p>
     <pre><code>- uses: a-line-services/release-pilot@v1
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     npm-token: ${{ secrets.PRIVATE_NPM_TOKEN }}
     npm-registry: 'https://npm.your-company.com'</code></pre>
 

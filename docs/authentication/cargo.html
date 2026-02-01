@@ -24,7 +24,6 @@
     </div>
     <pre><code>- uses: a-line-services/release-pilot@v1
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     cargo-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}</code></pre>
     
     <h3>Getting a crates.io Token</h3>
@@ -46,15 +45,11 @@
     token = "${{ secrets.CARGO_REGISTRY_TOKEN }}"
     EOF
 
-- uses: a-line-services/release-pilot@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+- uses: a-line-services/release-pilot@v1</code></pre>
 
     <h2>Option 3: Environment Variable</h2>
     <p>Cargo also respects the <code>CARGO_REGISTRY_TOKEN</code> environment variable:</p>
     <pre><code>- uses: a-line-services/release-pilot@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
   env:
     CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}</code></pre>
 
