@@ -2,33 +2,15 @@
  * Tests for cargo (Rust) ecosystem implementation
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { EcosystemContext } from '../../../src/ecosystems/base.js';
 import { CargoEcosystem } from '../../../src/ecosystems/cargo.js';
-
-const TEST_DIR = join(import.meta.dir, '../../fixtures/cargo-test');
-
-function createContext(path: string, options: Partial<EcosystemContext> = {}): EcosystemContext {
-  return {
-    path,
-    dryRun: false,
-    log: () => {},
-    ...options,
-  };
-}
+import { createContext, createTestProject, useTestDir } from '../../helpers/index.js';
 
 describe('CargoEcosystem', () => {
   const cargo = new CargoEcosystem();
-
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('cargo-test');
 
   describe('properties', () => {
     test('has correct name', () => {
@@ -38,43 +20,28 @@ describe('CargoEcosystem', () => {
 
   describe('detect', () => {
     test('detects Cargo.toml', async () => {
-      const projectDir = join(TEST_DIR, 'detect-test');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Cargo.toml'), '[package]\nname = "test"');
-
-      expect(await cargo.detect(projectDir)).toBe(true);
+      const project = createTestProject(TEST_DIR, 'detect-test').withCargoToml();
+      expect(await cargo.detect(project.path)).toBe(true);
     });
 
     test('returns false when no Cargo.toml', async () => {
-      const emptyDir = join(TEST_DIR, 'empty');
-      mkdirSync(emptyDir, { recursive: true });
-
-      expect(await cargo.detect(emptyDir)).toBe(false);
+      const project = createTestProject(TEST_DIR, 'empty');
+      expect(await cargo.detect(project.path)).toBe(false);
     });
   });
 
   describe('readVersion', () => {
     test('reads version from Cargo.toml', async () => {
-      const projectDir = join(TEST_DIR, 'read-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
-        `[package]
-name = "test"
-version = "1.2.3"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'read-version').withCargoToml({
+        version: '1.2.3',
+      });
 
-      const version = await cargo.readVersion(createContext(projectDir));
-
+      const version = await cargo.readVersion(createContext(project.path));
       expect(version).toBe('1.2.3');
     });
 
     test('reads workspace version', async () => {
-      const projectDir = join(TEST_DIR, 'workspace-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
+      const project = createTestProject(TEST_DIR, 'workspace-version').withCargoToml(
         `[workspace.package]
 version = "2.0.0"
 
@@ -84,48 +51,34 @@ version.workspace = true
 `
       );
 
-      const version = await cargo.readVersion(createContext(projectDir));
-
+      const version = await cargo.readVersion(createContext(project.path));
       expect(version).toBe('2.0.0');
     });
 
     test('throws when version is missing', async () => {
-      const projectDir = join(TEST_DIR, 'no-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
-        `[package]
-name = "test"
-`
+      const project = createTestProject(TEST_DIR, 'no-version').withFile(
+        'Cargo.toml',
+        `[package]\nname = "test"\n`
       );
 
-      await expect(cargo.readVersion(createContext(projectDir))).rejects.toThrow();
+      await expect(cargo.readVersion(createContext(project.path))).rejects.toThrow();
     });
   });
 
   describe('writeVersion', () => {
     test('writes version to Cargo.toml', async () => {
-      const projectDir = join(TEST_DIR, 'write-version');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
-        `[package]
-name = "test"
-version = "1.0.0"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'write-version').withCargoToml({
+        version: '1.0.0',
+      });
 
-      await cargo.writeVersion(createContext(projectDir), '2.0.0');
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'Cargo.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
       expect(content).toContain('version = "2.0.0"');
     });
 
     test('writes workspace version', async () => {
-      const projectDir = join(TEST_DIR, 'write-workspace');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
+      const project = createTestProject(TEST_DIR, 'write-workspace').withCargoToml(
         `[workspace.package]
 version = "1.0.0"
 
@@ -135,18 +88,15 @@ version.workspace = true
 `
       );
 
-      await cargo.writeVersion(createContext(projectDir), '2.0.0');
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'Cargo.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
       expect(content).toContain('[workspace.package]');
       expect(content).toMatch(/\[workspace\.package\][^[]*version = "2\.0\.0"/s);
     });
 
     test('preserves other fields', async () => {
-      const projectDir = join(TEST_DIR, 'preserve-fields');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
+      const project = createTestProject(TEST_DIR, 'preserve-fields').withCargoToml(
         `[package]
 name = "test"
 version = "1.0.0"
@@ -158,51 +108,40 @@ serde = "1.0"
 `
       );
 
-      await cargo.writeVersion(createContext(projectDir), '1.1.0');
+      await cargo.writeVersion(createContext(project.path), '1.1.0');
 
-      const content = readFileSync(join(projectDir, 'Cargo.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
       expect(content).toContain('name = "test"');
       expect(content).toContain('edition = "2021"');
       expect(content).toContain('serde = "1.0"');
     });
 
     test('skips write in dry run mode', async () => {
-      const projectDir = join(TEST_DIR, 'dry-run');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(
-        join(projectDir, 'Cargo.toml'),
-        `[package]
-name = "test"
-version = "1.0.0"
-`
-      );
+      const project = createTestProject(TEST_DIR, 'dry-run').withCargoToml({
+        version: '1.0.0',
+      });
 
-      await cargo.writeVersion(createContext(projectDir, { dryRun: true }), '2.0.0');
+      await cargo.writeVersion(createContext(project.path, { dryRun: true }), '2.0.0');
 
-      const content = readFileSync(join(projectDir, 'Cargo.toml'), 'utf-8');
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
       expect(content).toContain('version = "1.0.0"');
     });
   });
 
   describe('getVersionFiles', () => {
     test('returns Cargo.toml', async () => {
-      const projectDir = join(TEST_DIR, 'version-files');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Cargo.toml'), '[package]');
+      const project = createTestProject(TEST_DIR, 'version-files').withCargoToml();
 
-      const files = await cargo.getVersionFiles(createContext(projectDir));
-
+      const files = await cargo.getVersionFiles(createContext(project.path));
       expect(files).toContain('Cargo.toml');
     });
 
     test('includes Cargo.lock if exists', async () => {
-      const projectDir = join(TEST_DIR, 'with-lock');
-      mkdirSync(projectDir, { recursive: true });
-      writeFileSync(join(projectDir, 'Cargo.toml'), '[package]');
-      writeFileSync(join(projectDir, 'Cargo.lock'), '');
+      const project = createTestProject(TEST_DIR, 'with-lock')
+        .withCargoToml()
+        .withFile('Cargo.lock', '');
 
-      const files = await cargo.getVersionFiles(createContext(projectDir));
-
+      const files = await cargo.getVersionFiles(createContext(project.path));
       expect(files).toContain('Cargo.toml');
       expect(files).toContain('Cargo.lock');
     });

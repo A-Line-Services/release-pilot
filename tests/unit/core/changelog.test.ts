@@ -2,11 +2,10 @@
  * Tests for changelog generation
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { describe, expect, test } from 'bun:test';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  type ChangelogPR,
   categorizePR,
   categorizePRs,
   createInitialChangelog,
@@ -17,156 +16,93 @@ import {
   shouldExcludePR,
   updateChangelog,
 } from '../../../src/core/changelog.js';
-
-const TEST_DIR = join(import.meta.dir, '../../fixtures/changelog-test');
+import { createChangelogOptions, createChangelogPR, useTestDir } from '../../helpers/index.js';
 
 describe('changelog', () => {
-  beforeAll(() => {
-    mkdirSync(TEST_DIR, { recursive: true });
-  });
-
-  afterAll(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
+  const TEST_DIR = useTestDir('changelog-test');
 
   describe('categorizePR', () => {
     test('categorizes feature by label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['feature'],
-      };
+      const pr = createChangelogPR({ title: 'Some change', labels: ['feature'] });
       expect(categorizePR(pr)).toBe('features');
     });
 
     test('categorizes fix by label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['bug', 'priority-high'],
-      };
+      const pr = createChangelogPR({ title: 'Some change', labels: ['bug', 'priority-high'] });
       expect(categorizePR(pr)).toBe('fixes');
     });
 
     test('categorizes breaking change by label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['breaking'],
-      };
+      const pr = createChangelogPR({ title: 'Some change', labels: ['breaking'] });
       expect(categorizePR(pr)).toBe('breaking');
     });
 
     test('categorizes docs by label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['documentation'],
-      };
+      const pr = createChangelogPR({ title: 'Some change', labels: ['documentation'] });
       expect(categorizePR(pr)).toBe('docs');
     });
 
     test('categorizes chores by label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['chore'],
-      };
+      const pr = createChangelogPR({ title: 'Some change', labels: ['chore'] });
       expect(categorizePR(pr)).toBe('chores');
     });
 
     test('categorizes by title when no matching labels', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'feat: add new feature',
-        labels: [],
-      };
+      const pr = createChangelogPR({ title: 'feat: add new feature', labels: [] });
       expect(categorizePR(pr)).toBe('features');
     });
 
     test('categorizes fix by title', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'fix: resolve issue',
-        labels: [],
-      };
+      const pr = createChangelogPR({ title: 'fix: resolve issue', labels: [] });
       expect(categorizePR(pr)).toBe('fixes');
     });
 
     test('categorizes docs by title', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'docs: update readme',
-        labels: [],
-      };
+      const pr = createChangelogPR({ title: 'docs: update readme', labels: [] });
       expect(categorizePR(pr)).toBe('docs');
     });
 
     test('categorizes chore by title', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'chore: update deps',
-        labels: [],
-      };
+      const pr = createChangelogPR({ title: 'chore: update deps', labels: [] });
       expect(categorizePR(pr)).toBe('chores');
     });
 
     test('defaults to other for unknown', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Random change',
-        labels: ['random-label'],
-      };
+      const pr = createChangelogPR({ title: 'Random change', labels: ['random-label'] });
       expect(categorizePR(pr)).toBe('other');
     });
   });
 
   describe('shouldExcludePR', () => {
     test('excludes PR with skip-changelog label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['skip-changelog'],
-      };
+      const pr = createChangelogPR({ labels: ['skip-changelog'] });
       expect(shouldExcludePR(pr)).toBe(true);
     });
 
     test('excludes PR with no-changelog label', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['no-changelog'],
-      };
+      const pr = createChangelogPR({ labels: ['no-changelog'] });
       expect(shouldExcludePR(pr)).toBe(true);
     });
 
     test('excludes PR with release labels', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['release:patch'],
-      };
+      const pr = createChangelogPR({ labels: ['release:patch'] });
       expect(shouldExcludePR(pr)).toBe(true);
     });
 
     test('does not exclude regular PRs', () => {
-      const pr: ChangelogPR = {
-        number: 1,
-        title: 'Some change',
-        labels: ['feature', 'enhancement'],
-      };
+      const pr = createChangelogPR({ labels: ['feature', 'enhancement'] });
       expect(shouldExcludePR(pr)).toBe(false);
     });
   });
 
   describe('categorizePRs', () => {
     test('categorizes multiple PRs', () => {
-      const prs: ChangelogPR[] = [
-        { number: 1, title: 'feat: new feature', labels: ['feature'] },
-        { number: 2, title: 'fix: bug fix', labels: ['bug'] },
-        { number: 3, title: 'docs: update docs', labels: ['documentation'] },
-        { number: 4, title: 'chore: update deps', labels: ['chore'] },
-        { number: 5, title: 'Random thing', labels: [] },
+      const prs = [
+        createChangelogPR({ number: 1, title: 'feat: new feature', labels: ['feature'] }),
+        createChangelogPR({ number: 2, title: 'fix: bug fix', labels: ['bug'] }),
+        createChangelogPR({ number: 3, title: 'docs: update docs', labels: ['documentation'] }),
+        createChangelogPR({ number: 4, title: 'chore: update deps', labels: ['chore'] }),
+        createChangelogPR({ number: 5, title: 'Random thing', labels: [] }),
       ];
 
       const categorized = categorizePRs(prs);
@@ -180,9 +116,9 @@ describe('changelog', () => {
     });
 
     test('excludes PRs with skip labels', () => {
-      const prs: ChangelogPR[] = [
-        { number: 1, title: 'feat: new feature', labels: ['feature'] },
-        { number: 2, title: 'Skip this', labels: ['skip-changelog'] },
+      const prs = [
+        createChangelogPR({ number: 1, title: 'feat: new feature', labels: ['feature'] }),
+        createChangelogPR({ number: 2, title: 'Skip this', labels: ['skip-changelog'] }),
       ];
 
       const categorized = categorizePRs(prs);
@@ -194,12 +130,7 @@ describe('changelog', () => {
 
   describe('formatPREntry', () => {
     test('formats PR with author', () => {
-      const pr: ChangelogPR = {
-        number: 42,
-        title: 'Add new feature',
-        author: 'johndoe',
-        labels: [],
-      };
+      const pr = createChangelogPR({ number: 42, title: 'Add new feature', author: 'johndoe' });
 
       const entry = formatPREntry(pr, { owner: 'owner', name: 'repo' });
       expect(entry).toBe(
@@ -208,11 +139,7 @@ describe('changelog', () => {
     });
 
     test('formats PR without author', () => {
-      const pr: ChangelogPR = {
-        number: 42,
-        title: 'Add new feature',
-        labels: [],
-      };
+      const pr = createChangelogPR({ number: 42, title: 'Add new feature' });
 
       const entry = formatPREntry(pr, { owner: 'owner', name: 'repo' });
       expect(entry).toBe('- Add new feature ([#42](https://github.com/owner/repo/pull/42))');
@@ -221,9 +148,9 @@ describe('changelog', () => {
 
   describe('formatCategorySection', () => {
     test('formats category with PRs', () => {
-      const prs: ChangelogPR[] = [
-        { number: 1, title: 'Feature A', labels: [] },
-        { number: 2, title: 'Feature B', author: 'user', labels: [] },
+      const prs = [
+        createChangelogPR({ number: 1, title: 'Feature A' }),
+        createChangelogPR({ number: 2, title: 'Feature B', author: 'user' }),
       ];
 
       const section = formatCategorySection('features', prs, { owner: 'owner', name: 'repo' });
@@ -242,9 +169,9 @@ describe('changelog', () => {
 
   describe('generateChangelogContent', () => {
     test('generates changelog with categorized entries', () => {
-      const prs: ChangelogPR[] = [
-        { number: 1, title: 'Add feature X', labels: ['feature'] },
-        { number: 2, title: 'Fix bug Y', labels: ['bug'] },
+      const prs = [
+        createChangelogPR({ number: 1, title: 'Add feature X', labels: ['feature'] }),
+        createChangelogPR({ number: 2, title: 'Fix bug Y', labels: ['bug'] }),
       ];
 
       const content = generateChangelogContent(
@@ -314,17 +241,11 @@ Some intro text`;
   });
 
   describe('updateChangelog', () => {
-    const defaultOptions = {
-      cwd: TEST_DIR,
-      dryRun: false,
-      log: () => {},
-      repoOwner: 'test-owner',
-      repoName: 'test-repo',
-    };
+    const defaultOptions = createChangelogOptions(TEST_DIR);
 
     test('creates new changelog file', () => {
       const testFile = 'new-changelog.md';
-      const prs: ChangelogPR[] = [{ number: 1, title: 'Add feature', labels: ['feature'] }];
+      const prs = [createChangelogPR({ number: 1, title: 'Add feature', labels: ['feature'] })];
 
       const result = updateChangelog(
         { enabled: true, file: testFile },
@@ -354,7 +275,7 @@ Some intro text`;
 `
       );
 
-      const prs: ChangelogPR[] = [{ number: 2, title: 'New feature', labels: ['feature'] }];
+      const prs = [createChangelogPR({ number: 2, title: 'New feature', labels: ['feature'] })];
 
       const result = updateChangelog(
         { enabled: true, file: testFile },
@@ -375,7 +296,7 @@ Some intro text`;
     test('dry run does not create file', () => {
       const testFile = 'dry-run-changelog.md';
       const logs: string[] = [];
-      const prs: ChangelogPR[] = [{ number: 1, title: 'Add feature', labels: ['feature'] }];
+      const prs = [createChangelogPR({ number: 1, title: 'Add feature', labels: ['feature'] })];
 
       const result = updateChangelog({ enabled: true, file: testFile }, '1.0.0', prs, {
         ...defaultOptions,
@@ -391,10 +312,10 @@ Some intro text`;
     });
 
     test('counts non-excluded entries', () => {
-      const prs: ChangelogPR[] = [
-        { number: 1, title: 'Add feature', labels: ['feature'] },
-        { number: 2, title: 'Skip this', labels: ['skip-changelog'] },
-        { number: 3, title: 'Another feature', labels: ['enhancement'] },
+      const prs = [
+        createChangelogPR({ number: 1, title: 'Add feature', labels: ['feature'] }),
+        createChangelogPR({ number: 2, title: 'Skip this', labels: ['skip-changelog'] }),
+        createChangelogPR({ number: 3, title: 'Another feature', labels: ['enhancement'] }),
       ];
 
       const result = updateChangelog(
