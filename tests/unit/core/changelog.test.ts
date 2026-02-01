@@ -67,6 +67,21 @@ describe('changelog', () => {
       expect(categorizePR(pr)).toBe('chores');
     });
 
+    test('categorizes breaking by title with ! indicator', () => {
+      const pr = createChangelogPR({ title: 'feat!: remove deprecated API', labels: [] });
+      expect(categorizePR(pr)).toBe('breaking');
+    });
+
+    test('categorizes breaking by title with scoped ! indicator', () => {
+      const pr = createChangelogPR({ title: 'feat(api)!: remove deprecated endpoint', labels: [] });
+      expect(categorizePR(pr)).toBe('breaking');
+    });
+
+    test('categorizes breaking by title with fix! indicator', () => {
+      const pr = createChangelogPR({ title: 'fix!: change return type', labels: [] });
+      expect(categorizePR(pr)).toBe('breaking');
+    });
+
     test('defaults to other for unknown', () => {
       const pr = createChangelogPR({ title: 'Random change', labels: ['random-label'] });
       expect(categorizePR(pr)).toBe('other');

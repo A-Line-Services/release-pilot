@@ -115,6 +115,8 @@ const LABEL_PATTERNS: Record<ChangelogCategory, RegExp[]> = {
  * Title patterns for categorizing PRs by conventional commit prefix
  */
 const TITLE_PATTERNS: Array<{ pattern: RegExp; category: ChangelogCategory }> = [
+  // Conventional Commits breaking change indicator: type! or type(scope)!
+  { pattern: /^[a-z]+(\(.+\))?![:(]/i, category: 'breaking' },
   { pattern: /^feat(ure)?[:(]/i, category: 'features' },
   { pattern: /^(fix|bug)[:(]/i, category: 'fixes' },
   { pattern: /^docs?[:(]/i, category: 'docs' },

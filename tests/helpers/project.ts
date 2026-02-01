@@ -7,7 +7,7 @@
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 /**
  * Fluent builder for creating test project structures
@@ -31,9 +31,11 @@ export class TestProject {
     return this;
   }
 
-  /** Write a file to the project */
+  /** Write a file to the project (supports nested paths like 'src/index.ts') */
   withFile(filename: string, content: string): this {
-    writeFileSync(join(this.path, filename), content);
+    const filepath = join(this.path, filename);
+    mkdirSync(dirname(filepath), { recursive: true });
+    writeFileSync(filepath, content);
     return this;
   }
 
