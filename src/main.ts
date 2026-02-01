@@ -216,6 +216,8 @@ export async function run(): Promise<void> {
   const recentPRs = filterPRsSinceDate(
     mergedPRs.map((pr) => ({
       number: pr.number,
+      title: pr.title,
+      author: pr.author,
       mergedAt: pr.mergedAt,
       labels: pr.labels,
     })),
@@ -381,11 +383,11 @@ export async function run(): Promise<void> {
 
   if (shouldUpdateVersionFiles) {
     core.info('Updating version references in files...');
-    const versionFileResults = updateVersionFiles(config.versionFiles.files, newVersion, {
-      cwd: process.cwd(),
-      dryRun: inputs.dryRun,
-      log: (msg) => core.info(msg),
-    });
+    const versionFileResults = updateVersionFiles(
+      config.versionFiles.files,
+      newVersion,
+      gitOptions
+    );
 
     // Add updated files to staging list
     const updatedVersionFiles = getUpdatedFiles(versionFileResults);
@@ -407,28 +409,22 @@ export async function run(): Promise<void> {
   if (config.changelog.enabled) {
     core.info('Generating changelog...');
 
-    // Convert PR info to changelog format
-    const changelogPRs: ChangelogPR[] = recentPRs.map((pr) => {
-      // Find the full PR info from the original list
-      const fullPR = mergedPRs.find((p) => p.number === pr.number);
-      return {
-        number: pr.number,
-        title: fullPR?.title ?? `PR #${pr.number}`,
-        author: fullPR?.author ?? undefined,
-        labels: pr.labels,
-      };
-    });
+    // Convert PR info to changelog format (data preserved from filterPRsSinceDate)
+    const changelogPRs: ChangelogPR[] = recentPRs.map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      author: pr.author ?? undefined,
+      labels: pr.labels,
+    }));
 
     const changelogResult = updateChangelog(config.changelog, newVersion, changelogPRs, {
-      cwd: process.cwd(),
-      dryRun: inputs.dryRun,
-      log: (msg) => core.info(msg),
+      ...gitOptions,
       repoOwner: gh.getOwner(),
       repoName: gh.getRepo(),
     });
 
     if (changelogResult.error) {
-      core.warning(`Changelog generation failed: ${changelogResult.error}`);
+      core.warning(`Failed to update ${config.changelog.file}: ${changelogResult.error}`);
     } else if (changelogResult.updated) {
       allVersionFiles.push(config.changelog.file);
     }
@@ -513,9 +509,7 @@ export async function run(): Promise<void> {
   if (config.cleanup.enabled) {
     core.info('Running cleanup of old releases...');
     const cleanupResult = await runCleanup(gh, config.cleanup, config.git.tagPrefix, {
-      cwd: process.cwd(),
-      dryRun: inputs.dryRun,
-      log: (msg) => core.info(msg),
+      ...gitOptions,
       warn: (msg) => core.warning(msg),
       packages,
       ecosystemRegistry: registry,

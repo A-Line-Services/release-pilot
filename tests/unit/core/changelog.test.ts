@@ -201,7 +201,7 @@ describe('changelog', () => {
         labels: [],
       };
 
-      const entry = formatPREntry(pr, 'owner', 'repo');
+      const entry = formatPREntry(pr, { owner: 'owner', name: 'repo' });
       expect(entry).toBe(
         '- Add new feature ([#42](https://github.com/owner/repo/pull/42)) by @johndoe'
       );
@@ -214,7 +214,7 @@ describe('changelog', () => {
         labels: [],
       };
 
-      const entry = formatPREntry(pr, 'owner', 'repo');
+      const entry = formatPREntry(pr, { owner: 'owner', name: 'repo' });
       expect(entry).toBe('- Add new feature ([#42](https://github.com/owner/repo/pull/42))');
     });
   });
@@ -226,7 +226,7 @@ describe('changelog', () => {
         { number: 2, title: 'Feature B', author: 'user', labels: [] },
       ];
 
-      const section = formatCategorySection('features', prs, 'owner', 'repo');
+      const section = formatCategorySection('features', prs, { owner: 'owner', name: 'repo' });
 
       expect(section).toContain('### Features');
       expect(section).toContain('- Feature A ([#1]');
@@ -235,7 +235,7 @@ describe('changelog', () => {
     });
 
     test('returns empty string for empty category', () => {
-      const section = formatCategorySection('features', [], 'owner', 'repo');
+      const section = formatCategorySection('features', [], { owner: 'owner', name: 'repo' });
       expect(section).toBe('');
     });
   });

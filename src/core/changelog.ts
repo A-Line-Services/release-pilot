@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ResolvedChangelogConfig } from '../config/loader.js';
+import type { BaseOperationOptions } from './types.js';
 
 /**
  * Pull request information for changelog entry
@@ -25,15 +26,19 @@ export interface ChangelogPR {
 }
 
 /**
+ * Repository information for generating PR links
+ */
+export interface RepoInfo {
+  /** Repository owner */
+  owner: string;
+  /** Repository name */
+  name: string;
+}
+
+/**
  * Options for changelog generation
  */
-export interface ChangelogOptions {
-  /** Base directory (usually repository root) */
-  cwd: string;
-  /** Whether this is a dry run */
-  dryRun: boolean;
-  /** Logger function */
-  log: (message: string) => void;
+export interface ChangelogOptions extends BaseOperationOptions {
   /** Repository owner for PR links */
   repoOwner: string;
   /** Repository name for PR links */
@@ -71,22 +76,33 @@ export interface CategorizedEntries {
   other: ChangelogPR[];
 }
 
-/**
- * Category display configuration
- */
-const CATEGORY_CONFIG: Record<ChangelogCategory, { title: string; emoji: string }> = {
-  breaking: { title: 'Breaking Changes', emoji: '' },
-  features: { title: 'Features', emoji: '' },
-  fixes: { title: 'Bug Fixes', emoji: '' },
-  docs: { title: 'Documentation', emoji: '' },
-  chores: { title: 'Chores', emoji: '' },
-  other: { title: 'Other Changes', emoji: '' },
+/** Categories to check (excludes 'other' as it's the fallback) */
+const CATEGORIZABLE: ChangelogCategory[] = ['breaking', 'features', 'fixes', 'docs', 'chores'];
+
+/** Display titles for each category */
+const CATEGORY_TITLES: Record<ChangelogCategory, string> = {
+  breaking: 'Breaking Changes',
+  features: 'Features',
+  fixes: 'Bug Fixes',
+  docs: 'Documentation',
+  chores: 'Chores',
+  other: 'Other Changes',
 };
 
+/** Order in which categories appear in the changelog */
+const CATEGORY_ORDER: ChangelogCategory[] = [
+  'breaking',
+  'features',
+  'fixes',
+  'docs',
+  'chores',
+  'other',
+];
+
 /**
- * Label patterns for categorizing PRs
+ * Label patterns for categorizing PRs by label
  */
-const CATEGORY_LABELS: Record<ChangelogCategory, RegExp[]> = {
+const LABEL_PATTERNS: Record<ChangelogCategory, RegExp[]> = {
   breaking: [/^breaking/i, /^major/i],
   features: [/^feat/i, /^feature/i, /^enhancement/i, /^minor/i],
   fixes: [/^fix/i, /^bug/i, /^patch/i],
@@ -96,65 +112,74 @@ const CATEGORY_LABELS: Record<ChangelogCategory, RegExp[]> = {
 };
 
 /**
+ * Title patterns for categorizing PRs by conventional commit prefix
+ */
+const TITLE_PATTERNS: Array<{ pattern: RegExp; category: ChangelogCategory }> = [
+  { pattern: /^feat(ure)?[:(]/i, category: 'features' },
+  { pattern: /^(fix|bug)[:(]/i, category: 'fixes' },
+  { pattern: /^docs?[:(]/i, category: 'docs' },
+  { pattern: /^(chore|ci|build|refactor)[:(]/i, category: 'chores' },
+  { pattern: /^breaking[:(]/i, category: 'breaking' },
+  { pattern: /breaking change/i, category: 'breaking' },
+];
+
+/**
  * Labels that indicate a PR should be excluded from the changelog
  */
-const EXCLUDE_LABELS = [/^skip.?changelog/i, /^no.?changelog/i, /^release:/i];
+const EXCLUDE_PATTERNS: RegExp[] = [/^skip.?changelog/i, /^no.?changelog/i, /^release:/i];
+
+/**
+ * Check if any label matches any pattern in a list
+ */
+function matchesAnyPattern(labels: string[], patterns: RegExp[]): boolean {
+  return labels.some((label) => patterns.some((pattern) => pattern.test(label)));
+}
 
 /**
  * Categorize a PR based on its labels
  */
-export function categorizePR(pr: ChangelogPR): ChangelogCategory {
-  for (const label of pr.labels) {
-    // Check each category's patterns
-    for (const [category, patterns] of Object.entries(CATEGORY_LABELS) as [
-      ChangelogCategory,
-      RegExp[],
-    ][]) {
-      if (category === 'other') continue;
-      for (const pattern of patterns) {
-        if (pattern.test(label)) {
-          return category;
-        }
-      }
+function categorizeByLabels(labels: string[]): ChangelogCategory | null {
+  for (const category of CATEGORIZABLE) {
+    if (matchesAnyPattern(labels, LABEL_PATTERNS[category])) {
+      return category;
     }
   }
+  return null;
+}
 
-  // Try to infer from title using conventional commit format
-  const title = pr.title.toLowerCase();
-  if (title.startsWith('feat') || title.startsWith('feature')) return 'features';
-  if (title.startsWith('fix') || title.startsWith('bug')) return 'fixes';
-  if (title.startsWith('docs') || title.startsWith('doc:')) return 'docs';
-  if (
-    title.startsWith('chore') ||
-    title.startsWith('ci') ||
-    title.startsWith('build') ||
-    title.startsWith('refactor')
-  )
-    return 'chores';
-  if (title.startsWith('breaking') || title.includes('breaking change')) return 'breaking';
+/**
+ * Categorize a PR based on its title (conventional commit format)
+ */
+function categorizeByTitle(title: string): ChangelogCategory {
+  const match = TITLE_PATTERNS.find(({ pattern }) => pattern.test(title));
+  return match?.category ?? 'other';
+}
 
-  return 'other';
+/**
+ * Categorize a PR based on its labels and title
+ *
+ * First attempts to categorize by labels, then falls back to title-based
+ * categorization using conventional commit format.
+ */
+export function categorizePR(pr: ChangelogPR): ChangelogCategory {
+  return categorizeByLabels(pr.labels) ?? categorizeByTitle(pr.title);
 }
 
 /**
  * Check if a PR should be excluded from the changelog
+ *
+ * PRs with labels like "skip-changelog", "no-changelog", or "release:*"
+ * are excluded.
  */
 export function shouldExcludePR(pr: ChangelogPR): boolean {
-  for (const label of pr.labels) {
-    for (const pattern of EXCLUDE_LABELS) {
-      if (pattern.test(label)) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return matchesAnyPattern(pr.labels, EXCLUDE_PATTERNS);
 }
 
 /**
- * Categorize all PRs into groups
+ * Create empty categorized entries structure
  */
-export function categorizePRs(prs: ChangelogPR[]): CategorizedEntries {
-  const entries: CategorizedEntries = {
+function createEmptyEntries(): CategorizedEntries {
+  return {
     breaking: [],
     features: [],
     fixes: [],
@@ -162,41 +187,43 @@ export function categorizePRs(prs: ChangelogPR[]): CategorizedEntries {
     chores: [],
     other: [],
   };
-
-  for (const pr of prs) {
-    if (shouldExcludePR(pr)) {
-      continue;
-    }
-
-    const category = categorizePR(pr);
-    entries[category].push(pr);
-  }
-
-  return entries;
 }
 
 /**
- * Format a single PR entry
+ * Categorize all PRs into groups
+ *
+ * Filters out excluded PRs and groups the rest by category.
  */
-export function formatPREntry(pr: ChangelogPR, repoOwner: string, repoName: string): string {
-  const prLink = `[#${pr.number}](https://github.com/${repoOwner}/${repoName}/pull/${pr.number})`;
+export function categorizePRs(prs: ChangelogPR[]): CategorizedEntries {
+  return prs
+    .filter((pr) => !shouldExcludePR(pr))
+    .reduce<CategorizedEntries>((entries, pr) => {
+      entries[categorizePR(pr)].push(pr);
+      return entries;
+    }, createEmptyEntries());
+}
+
+/**
+ * Format a single PR entry for the changelog
+ */
+export function formatPREntry(pr: ChangelogPR, repo: RepoInfo): string {
+  const prLink = `[#${pr.number}](https://github.com/${repo.owner}/${repo.name}/pull/${pr.number})`;
   const author = pr.author ? ` by @${pr.author}` : '';
   return `- ${pr.title} (${prLink})${author}`;
 }
 
 /**
- * Format a category section
+ * Format a category section with header and entries
  */
 export function formatCategorySection(
   category: ChangelogCategory,
   prs: ChangelogPR[],
-  repoOwner: string,
-  repoName: string
+  repo: RepoInfo
 ): string {
   if (prs.length === 0) return '';
 
-  const { title } = CATEGORY_CONFIG[category];
-  const entries = prs.map((pr) => formatPREntry(pr, repoOwner, repoName)).join('\n');
+  const title = CATEGORY_TITLES[category];
+  const entries = prs.map((pr) => formatPREntry(pr, repo)).join('\n');
 
   return `### ${title}\n\n${entries}`;
 }
@@ -213,25 +240,11 @@ export function generateChangelogContent(
 ): string {
   const categorized = categorizePRs(prs);
   const dateStr = date.toISOString().split('T')[0];
+  const repo: RepoInfo = { owner: repoOwner, name: repoName };
 
-  const sections: string[] = [];
-
-  // Add each non-empty category
-  const categoryOrder: ChangelogCategory[] = [
-    'breaking',
-    'features',
-    'fixes',
-    'docs',
-    'chores',
-    'other',
-  ];
-
-  for (const category of categoryOrder) {
-    const section = formatCategorySection(category, categorized[category], repoOwner, repoName);
-    if (section) {
-      sections.push(section);
-    }
-  }
+  const sections = CATEGORY_ORDER.map((category) =>
+    formatCategorySection(category, categorized[category], repo)
+  ).filter(Boolean);
 
   // If no sections, add a simple note
   if (sections.length === 0) {
@@ -249,13 +262,13 @@ export function generateChangelogContent(
 export function findInsertPosition(content: string): number {
   // Look for the first version header (## [x.x.x])
   const versionHeaderMatch = content.match(/^## \[[\d.]+/m);
-  if (versionHeaderMatch && versionHeaderMatch.index !== undefined) {
+  if (versionHeaderMatch?.index !== undefined) {
     return versionHeaderMatch.index;
   }
 
   // Look for any ## header
   const headerMatch = content.match(/^## /m);
-  if (headerMatch && headerMatch.index !== undefined) {
+  if (headerMatch?.index !== undefined) {
     return headerMatch.index;
   }
 

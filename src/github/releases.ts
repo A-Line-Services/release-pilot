@@ -24,6 +24,10 @@ export interface Release {
 export interface PullRequestWithMergeInfo {
   /** PR number */
   number: number;
+  /** PR title */
+  title: string;
+  /** PR author username */
+  author: string | null;
   /** ISO 8601 merge date (null if not merged) */
   mergedAt: string | null;
   /** Labels on the PR */

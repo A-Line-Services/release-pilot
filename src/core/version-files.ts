@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ResolvedVersionFileUpdate } from '../config/loader.js';
+import type { BaseOperationOptions } from './types.js';
 
 /**
  * Parsed version for template replacement
@@ -33,14 +34,7 @@ export interface VersionFileUpdateResult {
 /**
  * Options for updating version files
  */
-export interface UpdateVersionFilesOptions {
-  /** Base directory (usually repository root) */
-  cwd: string;
-  /** Whether this is a dry run */
-  dryRun: boolean;
-  /** Logger function */
-  log: (message: string) => void;
-}
+export type UpdateVersionFilesOptions = BaseOperationOptions;
 
 /**
  * Parse a version string into its parts

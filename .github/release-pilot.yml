@@ -12,17 +12,8 @@ packages:
     updateVersionFile: true
     publish: false
 
-version:
-  devRelease: true
-
 git:
   floatingTags: true
-
-cleanup:
-  enabled: true
-  dev:
-    all: true
-    keep: 3
 
 # Generate CHANGELOG.md from merged PRs
 changelog:
