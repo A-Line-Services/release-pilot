@@ -43,5 +43,4 @@ jobs:
       - uses: a-line-services/release-pilot@v1
         with:
           mode: ${{ steps.mode.outputs.mode }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           npm-token: ${{ secrets.NPM_TOKEN }}

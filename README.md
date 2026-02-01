@@ -45,8 +45,6 @@ jobs:
           fetch-depth: 0
 
       - uses: a-line-services/release-pilot@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### With Configuration File
@@ -117,7 +115,6 @@ Full release with version bump, tag, and GitHub release:
 - uses: a-line-services/release-pilot@v1
   with:
     mode: stable
-    github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Dev Release
@@ -128,7 +125,6 @@ Prerelease version with base36 timestamp (e.g., `1.2.3-dev.ml2fz8yd`):
 - uses: a-line-services/release-pilot@v1
   with:
     mode: dev
-    github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Check Mode (Dry Run)
@@ -140,7 +136,6 @@ Report what would happen without making changes:
   with:
     mode: check
     dry-run: true
-    github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Supported Ecosystems

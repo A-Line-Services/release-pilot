@@ -46,5 +46,3 @@ jobs:
       # Floating tags (v1, v1.2) are handled automatically via git.floatingTags config
       - name: Release
         uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
