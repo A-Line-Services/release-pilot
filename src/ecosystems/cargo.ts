@@ -7,8 +7,8 @@
  * @module ecosystems/cargo
  */
 
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { BaseFileEcosystem, type EcosystemContext } from './base.js';
 
 /**
@@ -89,11 +89,112 @@ export class CargoEcosystem extends BaseFileEcosystem {
   }
 
   /**
+   * Read the current version, resolving workspace inheritance if needed.
+   *
+   * When the member crate uses `version.workspace = true`, walks up the
+   * directory tree to find the workspace root Cargo.toml and reads the
+   * version from `[workspace.package]`.
+   */
+  async readVersion(ctx: EcosystemContext): Promise<string> {
+    const manifestPath = this.getManifestPath(ctx);
+
+    if (!existsSync(manifestPath)) {
+      throw new Error(`Cargo.toml not found at ${manifestPath}`);
+    }
+
+    const content = readFileSync(manifestPath, 'utf-8');
+
+    if (this.usesWorkspaceInheritance(content)) {
+      const rootPath = this.findWorkspaceRoot(ctx.path);
+      if (!rootPath) {
+        throw new Error(
+          `Crate at ${ctx.path} uses version.workspace = true but no workspace root Cargo.toml found`
+        );
+      }
+      const rootContent = readFileSync(rootPath, 'utf-8');
+      const version = this.extractWorkspaceVersion(rootContent);
+      if (!version) {
+        throw new Error(`No version found in workspace root ${rootPath}`);
+      }
+      return version;
+    }
+
+    const version = this.parseVersion(content, manifestPath);
+    if (!version) {
+      throw new Error(`No version found in ${manifestPath}`);
+    }
+    return version;
+  }
+
+  /**
+   * Write a new version, targeting the workspace root when the member
+   * uses `version.workspace = true`.
+   */
+  async writeVersion(ctx: EcosystemContext, version: string): Promise<void> {
+    if (ctx.dryRun) {
+      ctx.log(`[dry-run] Would write version ${version} to Cargo.toml`);
+      return;
+    }
+
+    const manifestPath = this.getManifestPath(ctx);
+    const content = readFileSync(manifestPath, 'utf-8');
+
+    if (this.usesWorkspaceInheritance(content)) {
+      const rootPath = this.findWorkspaceRoot(ctx.path);
+      if (!rootPath) {
+        throw new Error(
+          `Crate at ${ctx.path} uses version.workspace = true but no workspace root Cargo.toml found`
+        );
+      }
+      const rootContent = readFileSync(rootPath, 'utf-8');
+      const updatedContent = this.updateVersion(rootContent, version);
+      writeFileSync(rootPath, updatedContent);
+      ctx.log(`Updated version to ${version} in ${rootPath}`);
+      return;
+    }
+
+    const updatedContent = this.updateVersion(content, version);
+    writeFileSync(manifestPath, updatedContent);
+    ctx.log(`Updated version to ${version} in ${manifestPath}`);
+  }
+
+  /**
+   * Get files that should be committed after version bump.
+   *
+   * When the crate uses workspace inheritance, includes the workspace
+   * root Cargo.toml as a relative path from the member directory.
+   */
+  async getVersionFiles(ctx: EcosystemContext): Promise<string[]> {
+    const files = [this.config.manifestFile];
+
+    const manifestPath = this.getManifestPath(ctx);
+    if (existsSync(manifestPath)) {
+      const content = readFileSync(manifestPath, 'utf-8');
+      if (this.usesWorkspaceInheritance(content)) {
+        const rootPath = this.findWorkspaceRoot(ctx.path);
+        if (rootPath) {
+          const relPath = relative(ctx.path, rootPath);
+          files.push(relPath);
+        }
+      }
+    }
+
+    // Check for lockfiles
+    for (const lockFile of this.config.lockFiles ?? []) {
+      if (existsSync(join(ctx.path, lockFile))) {
+        files.push(lockFile);
+      }
+    }
+
+    return files;
+  }
+
+  /**
    * Parse version from Cargo.toml content
    *
    * Supports both direct version and workspace version inheritance.
    */
-  protected parseVersion(content: string): string | null {
+  protected parseVersion(content: string, _filePath?: string): string | null {
     // Check for workspace version first
     const workspaceVersion = this.extractWorkspaceVersion(content);
     if (workspaceVersion) {
@@ -123,6 +224,44 @@ export class CargoEcosystem extends BaseFileEcosystem {
   }
 
   /**
+   * Check if a Cargo.toml uses `version.workspace = true` and the version
+   * is inherited from a separate workspace root (not defined locally).
+   *
+   * Returns false when `[workspace.package]` exists in the same file,
+   * because the file is itself the workspace root.
+   */
+  private usesWorkspaceInheritance(content: string): boolean {
+    const inherits = /\[package\][^[]*version\.workspace\s*=\s*true/s.test(content);
+    if (!inherits) return false;
+    // If this file also defines [workspace.package], it is the root itself
+    return !content.includes('[workspace.package]');
+  }
+
+  /**
+   * Walk up the directory tree to find the workspace root Cargo.toml
+   * containing a `[workspace.package]` section with a version.
+   *
+   * @returns Absolute path to the workspace root Cargo.toml, or null if not found
+   */
+  private findWorkspaceRoot(memberPath: string): string | null {
+    let dir = dirname(memberPath);
+    // Walk up at most 10 levels to avoid infinite loops
+    for (let i = 0; i < 10; i++) {
+      const candidate = join(dir, 'Cargo.toml');
+      if (existsSync(candidate)) {
+        const content = readFileSync(candidate, 'utf-8');
+        if (content.includes('[workspace.package]')) {
+          return candidate;
+        }
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break; // Reached filesystem root
+      dir = parent;
+    }
+    return null;
+  }
+
+  /**
    * Extract version from [workspace.package] section
    */
   private extractWorkspaceVersion(content: string): string | null {
@@ -136,8 +275,7 @@ export class CargoEcosystem extends BaseFileEcosystem {
    */
   private extractPackageVersion(content: string): string | null {
     // First check if version uses workspace inheritance
-    const wsInheritRegex = /\[package\][^[]*version\.workspace\s*=\s*true/s;
-    if (content.match(wsInheritRegex)) {
+    if (this.usesWorkspaceInheritance(content)) {
       // Fall back to workspace version
       return this.extractWorkspaceVersion(content);
     }
