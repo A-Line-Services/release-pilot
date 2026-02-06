@@ -91,6 +91,15 @@ export function extractReleaseLabels(prs: PullRequest[], config: LabelConfig): s
     }
   }
 
+  // Only include skip label if ALL PRs have it — a single PR without
+  // the skip label means there are meaningful changes to release.
+  if (releaseLabels.has(config.skip) && prs.length > 0) {
+    const allPRsHaveSkip = prs.every((pr) => pr.labels.includes(config.skip));
+    if (!allPRsHaveSkip) {
+      releaseLabels.delete(config.skip);
+    }
+  }
+
   return Array.from(releaseLabels);
 }
 
