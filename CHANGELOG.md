@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.4] - 2026-02-06
+
+### Bug Fixes
+
+- fix: resolve workspace version inheritance for cargo workspace members ([#8](https://github.com/A-Line-Services/release-pilot/pull/8)) by @Arthurdw
+
 ## [1.2.3] - 2026-02-06
 
 - No notable changes in this release
