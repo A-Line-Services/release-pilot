@@ -103,12 +103,52 @@ describe('GitHub labels', () => {
       expect(labels).toHaveLength(2);
     });
 
-    test('detects skip label', () => {
+    test('includes skip label when all PRs have it', () => {
+      const prs: PullRequest[] = [
+        { number: 1, labels: ['release:skip', 'feature'] },
+        { number: 2, labels: ['release:skip', 'bug'] },
+        { number: 3, labels: ['release:skip'] },
+      ];
+
+      const labels = extractReleaseLabels(prs, defaultLabelConfig);
+
+      expect(labels).toContain('release:skip');
+    });
+
+    test('includes skip label when single PR has it', () => {
       const prs: PullRequest[] = [{ number: 1, labels: ['release:skip', 'feature'] }];
 
       const labels = extractReleaseLabels(prs, defaultLabelConfig);
 
       expect(labels).toContain('release:skip');
+    });
+
+    test('excludes skip label when only some PRs have it', () => {
+      const prs: PullRequest[] = [
+        { number: 1, labels: ['release:skip', 'release:minor'] },
+        { number: 2, labels: ['release:patch', 'docs'] },
+        { number: 3, labels: ['release:skip'] },
+      ];
+
+      const labels = extractReleaseLabels(prs, defaultLabelConfig);
+
+      expect(labels).not.toContain('release:skip');
+      expect(labels).toContain('release:minor');
+      expect(labels).toContain('release:patch');
+    });
+
+    test('excludes skip label when only one of many PRs has it', () => {
+      const prs: PullRequest[] = [
+        { number: 1, labels: ['release:skip'] },
+        { number: 2, labels: ['release:minor'] },
+        { number: 3, labels: ['enhancement'] },
+        { number: 4, labels: ['bug'] },
+      ];
+
+      const labels = extractReleaseLabels(prs, defaultLabelConfig);
+
+      expect(labels).not.toContain('release:skip');
+      expect(labels).toContain('release:minor');
     });
 
     test('extracts prerelease labels', () => {
