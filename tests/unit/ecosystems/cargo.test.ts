@@ -128,6 +128,62 @@ serde = "1.0"
     });
   });
 
+  describe('workspace member with version.workspace = true', () => {
+    test('readVersion resolves version from workspace root Cargo.toml', async () => {
+      // Simulate a Cargo workspace: root has [workspace.package] version,
+      // member crate uses version.workspace = true
+      const project = createTestProject(TEST_DIR, 'ws-read')
+        .withCargoToml(
+          `[workspace]\nmembers = ["member-crate"]\n\n[workspace.package]\nversion = "3.0.0"\nedition = "2021"\n`
+        )
+        .withFile(
+          'member-crate/Cargo.toml',
+          `[package]\nname = "member-crate"\nversion.workspace = true\nedition.workspace = true\n`
+        );
+
+      const version = await cargo.readVersion(createContext(join(project.path, 'member-crate')));
+      expect(version).toBe('3.0.0');
+    });
+
+    test('writeVersion updates workspace root Cargo.toml when member uses version.workspace = true', async () => {
+      const project = createTestProject(TEST_DIR, 'ws-write')
+        .withCargoToml(
+          `[workspace]\nmembers = ["member-crate"]\n\n[workspace.package]\nversion = "1.0.0"\nedition = "2021"\n`
+        )
+        .withFile(
+          'member-crate/Cargo.toml',
+          `[package]\nname = "member-crate"\nversion.workspace = true\nedition.workspace = true\n`
+        );
+
+      await cargo.writeVersion(createContext(join(project.path, 'member-crate')), '2.0.0');
+
+      // The root Cargo.toml should be updated
+      const rootContent = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
+      expect(rootContent).toContain('version = "2.0.0"');
+
+      // The member Cargo.toml should remain unchanged
+      const memberContent = readFileSync(join(project.path, 'member-crate', 'Cargo.toml'), 'utf-8');
+      expect(memberContent).toContain('version.workspace = true');
+      expect(memberContent).not.toContain('version = "2.0.0"');
+    });
+
+    test('getVersionFiles returns workspace root Cargo.toml path for workspace member', async () => {
+      const project = createTestProject(TEST_DIR, 'ws-files')
+        .withCargoToml(
+          `[workspace]\nmembers = ["member-crate"]\n\n[workspace.package]\nversion = "1.0.0"\n`
+        )
+        .withFile(
+          'member-crate/Cargo.toml',
+          `[package]\nname = "member-crate"\nversion.workspace = true\n`
+        );
+
+      const files = await cargo.getVersionFiles(createContext(join(project.path, 'member-crate')));
+      // Should include the workspace root Cargo.toml (relative path from member to root)
+      const hasRootToml = files.some((f) => f.includes('..'));
+      expect(hasRootToml).toBe(true);
+    });
+  });
+
   describe('getVersionFiles', () => {
     test('returns Cargo.toml', async () => {
       const project = createTestProject(TEST_DIR, 'version-files').withCargoToml();
