@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.5] - 2026-02-09
+
+- No notable changes in this release
+
 ## [1.2.4] - 2026-02-06
 
 ### Bug Fixes
