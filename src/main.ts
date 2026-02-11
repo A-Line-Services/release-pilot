@@ -225,6 +225,19 @@ export async function run(): Promise<void> {
   );
   core.info(`Found ${recentPRs.length} PRs merged since last release`);
 
+  // Skip release if no changes detected and skipIfNoChanges is enabled
+  if (recentPRs.length === 0 && config.skipIfNoChanges) {
+    core.info('No changes detected since last release, skipping (skipIfNoChanges is enabled)');
+    setOutputs({
+      version: previousVersion,
+      previousVersion,
+      bumpType: 'patch',
+      releasedPackages: [],
+      skipped: true,
+    });
+    return;
+  }
+
   // Extract release labels and determine bump type
   const releaseLabels = extractReleaseLabels(recentPRs, config.labels);
   const { bumpType, skip, prerelease } = getBumpTypeFromLabels(releaseLabels, config.labels);

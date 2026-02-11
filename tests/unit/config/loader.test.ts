@@ -148,6 +148,14 @@ packages:
       expect(() => loadConfig(configPath)).toThrow();
     });
 
+    test('loads config with skipIfNoChanges', () => {
+      const configPath = join(TEST_DIR, 'skip-no-changes.yml');
+      writeFileSync(configPath, 'skipIfNoChanges: true\n');
+
+      const config = loadConfig(configPath);
+      expect(config.skipIfNoChanges).toBe(true);
+    });
+
     test('throws on non-existent file', () => {
       expect(() => loadConfig('/non/existent/path.yml')).toThrow();
     });
@@ -320,6 +328,16 @@ packages:
       expect(config.versionFiles.updateOn.dev).toBe(false);
       expect(config.versionFiles.updateOn.alpha).toBe(false);
       expect(config.versionFiles.updateOn.beta).toBe(false);
+    });
+
+    test('applies default skipIfNoChanges (false)', () => {
+      const config = applyDefaults({});
+      expect(config.skipIfNoChanges).toBe(false);
+    });
+
+    test('preserves skipIfNoChanges when set to true', () => {
+      const config = applyDefaults({ skipIfNoChanges: true });
+      expect(config.skipIfNoChanges).toBe(true);
     });
 
     test('allows disabling stable in versionFiles.updateOn', () => {

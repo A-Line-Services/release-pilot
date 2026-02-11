@@ -200,6 +200,7 @@ export interface ResolvedConfig {
   changelog: ResolvedChangelogConfig;
   versionFiles: ResolvedVersionFilesConfig;
   cleanup: ResolvedCleanupConfig;
+  skipIfNoChanges: boolean;
 }
 
 // =============================================================================
@@ -339,6 +340,7 @@ export function applyDefaults(config: ReleasePilotConfigType): ResolvedConfig {
     changelog: applyChangelogDefaults(config.changelog),
     versionFiles: applyVersionFilesDefaults(config.versionFiles),
     cleanup: applyCleanupDefaults(config.cleanup),
+    skipIfNoChanges: config.skipIfNoChanges ?? false,
   };
 }
 
