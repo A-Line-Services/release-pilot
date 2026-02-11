@@ -261,6 +261,8 @@ changelog:
   enabled: boolean        # Generate changelog (default: false)
   file: string            # Changelog file (default: CHANGELOG.md)
 
+skipIfNoChanges: boolean  # Skip release if no PRs merged (default: false)
+
 versionFiles:
   enabled: boolean        # Enable version file updates (default: false)
   updateOn:               # Which release types trigger updates
