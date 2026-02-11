@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.6] - 2026-02-11
+
+### Features
+
+- feat: add skipIfNoChanges config option ([#9](https://github.com/A-Line-Services/release-pilot/pull/9)) by @Arthurdw
+
 ## [1.2.5] - 2026-02-09
 
 - No notable changes in this release
