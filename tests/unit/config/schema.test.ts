@@ -255,6 +255,16 @@ describe('config schema', () => {
       expect(a.validate(ReleasePilotConfig, config)).toBe(true);
     });
 
+    test('accepts config with skipIfNoChanges', () => {
+      const config = { skipIfNoChanges: true };
+      expect(a.validate(ReleasePilotConfig, config)).toBe(true);
+    });
+
+    test('rejects non-boolean skipIfNoChanges', () => {
+      const config = { skipIfNoChanges: 'yes' };
+      expect(a.validate(ReleasePilotConfig, config)).toBe(false);
+    });
+
     test('provides useful error messages for invalid config', () => {
       const config = {
         packages: [

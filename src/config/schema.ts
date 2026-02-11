@@ -552,6 +552,9 @@ export const ReleasePilotConfig = a.object(
 
     /** Cleanup configuration for old releases, tags, and published packages */
     cleanup: a.optional(CleanupConfig),
+
+    /** Skip release when no PRs have been merged since the last release (default: false) */
+    skipIfNoChanges: a.optional(a.boolean()),
   },
   {
     id: 'ReleasePilotConfig',
