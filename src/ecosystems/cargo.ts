@@ -38,7 +38,8 @@ export class CargoEcosystem extends BaseFileEcosystem {
   /**
    * Publish crate to crates.io
    *
-   * If registry.cargoToken is provided, passes it via --token flag.
+   * If registry.cargoToken is provided, sets the CARGO_REGISTRY_TOKEN
+   * environment variable for the publish command.
    * Otherwise, assumes credentials are already configured.
    */
   async publish(ctx: EcosystemContext): Promise<void> {
@@ -51,14 +52,16 @@ export class CargoEcosystem extends BaseFileEcosystem {
 
     const args = ['publish', '--allow-dirty'];
 
-    // Add token if provided
+    // Pass token via environment variable (--token is deprecated)
+    const env: Record<string, string> = { ...process.env } as Record<string, string>;
     if (ctx.registry?.cargoToken) {
-      args.push('--token', ctx.registry.cargoToken);
+      env.CARGO_REGISTRY_TOKEN = ctx.registry.cargoToken;
       ctx.log('Using provided cargo token');
     }
 
     await exec('cargo', args, {
       cwd: ctx.path,
+      env,
     });
 
     ctx.log('Published to crates.io');
