@@ -128,7 +128,7 @@ const TITLE_PATTERNS: Array<{ pattern: RegExp; category: ChangelogCategory }> = 
 /**
  * Labels that indicate a PR should be excluded from the changelog
  */
-const EXCLUDE_PATTERNS: RegExp[] = [/^skip.?changelog/i, /^no.?changelog/i, /^release:/i];
+const EXCLUDE_PATTERNS: RegExp[] = [/^skip.?changelog/i, /^no.?changelog/i];
 
 /**
  * Check if any label matches any pattern in a list
@@ -170,8 +170,7 @@ export function categorizePR(pr: ChangelogPR): ChangelogCategory {
 /**
  * Check if a PR should be excluded from the changelog
  *
- * PRs with labels like "skip-changelog", "no-changelog", or "release:*"
- * are excluded.
+ * PRs with labels like "skip-changelog" or "no-changelog" are excluded.
  */
 export function shouldExcludePR(pr: ChangelogPR): boolean {
   return matchesAnyPattern(pr.labels, EXCLUDE_PATTERNS);
