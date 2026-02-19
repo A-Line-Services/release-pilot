@@ -50,6 +50,14 @@ inputs:
     required: false
     default: 'https://registry.npmjs.org'
 
+  git-user-name:
+    description: 'Git user name for commits (auto-detected from token if not set)'
+    required: false
+
+  git-user-email:
+    description: 'Git user email for commits (auto-detected from token if not set)'
+    required: false
+
   cargo-token:
     description: 'Cargo registry token for publishing to crates.io'
     required: false
