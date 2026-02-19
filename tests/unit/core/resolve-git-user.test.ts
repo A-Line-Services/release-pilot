@@ -132,6 +132,28 @@ describe('resolveGitUser', () => {
       });
     });
 
+    test('logs only defaulted fields when detection fails with partial input', async () => {
+      const { log, logs } = createLogCapture();
+      await resolveGitUser(mockNoUser, { gitUserEmail: 'custom@example.com' }, log);
+
+      // Should mention defaulting "name" but not "email" since email was provided
+      const fallbackMsg = logs.find((msg) => msg.includes('default'));
+      expect(fallbackMsg).toBeDefined();
+      expect(fallbackMsg).toContain('name');
+      expect(fallbackMsg).not.toContain('and email');
+    });
+
+    test('does not log fallback when detection fails but both inputs are set', async () => {
+      const { log, logs } = createLogCapture();
+      await resolveGitUser(
+        mockNoUser,
+        { gitUserName: 'custom', gitUserEmail: 'custom@example.com' },
+        log
+      );
+
+      expect(logs.some((msg) => msg.includes('default'))).toBe(false);
+    });
+
     test('uses explicit name with default email when detection fails', async () => {
       const { log } = createLogCapture();
       const result = await resolveGitUser(mockNoUser, { gitUserName: 'custom-name' }, log);

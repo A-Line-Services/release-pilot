@@ -208,23 +208,24 @@ export async function resolveGitUser(
 
   // Try auto-detect from token (works for PATs, may fail for app installation tokens)
   let detected: GitUserIdentity | null = null;
-  if (!inputs.gitUserName || !inputs.gitUserEmail) {
-    const user = await getAuthenticatedUser();
-    if (user) {
-      detected = {
-        name: user.login,
-        email: `${user.id}+${user.login}@users.noreply.github.com`,
-      };
-      log(`Auto-detected git user from token: ${user.login}`);
-    }
+  const user = await getAuthenticatedUser();
+  if (user) {
+    detected = {
+      name: user.login,
+      email: `${user.id}+${user.login}@users.noreply.github.com`,
+    };
+    log(`Auto-detected git user from token: ${user.login}`);
   }
 
   const name = inputs.gitUserName ?? detected?.name ?? DEFAULT_GIT_USER.name;
   const email = inputs.gitUserEmail ?? detected?.email ?? DEFAULT_GIT_USER.email;
 
-  if (!inputs.gitUserName && !detected) {
+  if (!detected && (!inputs.gitUserName || !inputs.gitUserEmail)) {
+    const defaults = [!inputs.gitUserName ? 'name' : null, !inputs.gitUserEmail ? 'email' : null]
+      .filter(Boolean)
+      .join(' and ');
     log(
-      'Could not detect git user from token, using default: github-actions[bot]. ' +
+      `Could not detect git user from token, using default ${defaults}. ` +
         'Set git-user-name and git-user-email inputs to customize.'
     );
   }
