@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.10] - 2026-02-19
+
+### Bug Fixes
+
+- fix: stop excluding PRs with release labels from changelog ([#11](https://github.com/A-Line-Services/release-pilot/pull/11)) by @Arthurdw
+
 ## [1.2.9] - 2026-02-19
 
 - No notable changes in this release
