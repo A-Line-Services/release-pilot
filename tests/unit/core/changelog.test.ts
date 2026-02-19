@@ -99,9 +99,9 @@ describe('changelog', () => {
       expect(shouldExcludePR(pr)).toBe(true);
     });
 
-    test('excludes PR with release labels', () => {
+    test('does not exclude PR with release labels', () => {
       const pr = createChangelogPR({ labels: ['release:patch'] });
-      expect(shouldExcludePR(pr)).toBe(true);
+      expect(shouldExcludePR(pr)).toBe(false);
     });
 
     test('does not exclude regular PRs', () => {
