@@ -217,12 +217,12 @@ export class CargoEcosystem extends BaseFileEcosystem {
     // Check if using workspace versioning
     if (content.includes('[workspace.package]')) {
       // Update workspace version
-      const wsRegex = /(\[workspace\.package\][^[]*version\s*=\s*)"[^"]*"/s;
+      const wsRegex = /(\[workspace\.package\][^[]*\n[ \t]*version\s*=\s*)"[^"]*"/s;
       return content.replace(wsRegex, `$1"${version}"`);
     }
 
     // Update package version
-    const pkgRegex = /(\[package\][^[]*version\s*=\s*)"[^"]*"/s;
+    const pkgRegex = /(\[package\][^[]*\n[ \t]*version\s*=\s*)"[^"]*"/s;
     return content.replace(pkgRegex, `$1"${version}"`);
   }
 
@@ -268,7 +268,7 @@ export class CargoEcosystem extends BaseFileEcosystem {
    * Extract version from [workspace.package] section
    */
   private extractWorkspaceVersion(content: string): string | null {
-    const regex = /\[workspace\.package\][^[]*version\s*=\s*"([^"]+)"/s;
+    const regex = /\[workspace\.package\][^[]*\n[ \t]*version\s*=\s*"([^"]+)"/s;
     const match = content.match(regex);
     return match?.[1] ?? null;
   }
@@ -283,7 +283,7 @@ export class CargoEcosystem extends BaseFileEcosystem {
       return this.extractWorkspaceVersion(content);
     }
 
-    const regex = /\[package\][^[]*version\s*=\s*"([^"]+)"/s;
+    const regex = /\[package\][^[]*\n[ \t]*version\s*=\s*"([^"]+)"/s;
     const match = content.match(regex);
     return match?.[1] ?? null;
   }

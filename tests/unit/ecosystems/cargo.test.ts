@@ -126,6 +126,23 @@ serde = "1.0"
       const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
       expect(content).toContain('version = "1.0.0"');
     });
+
+    test('does not modify rust-version field', async () => {
+      const project = createTestProject(TEST_DIR, 'rust-version').withCargoToml(
+        `[package]
+name = "test"
+version = "1.0.0"
+rust-version = "1.70"
+edition = "2021"
+`
+      );
+
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
+
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
+      expect(content).toContain('version = "2.0.0"');
+      expect(content).toContain('rust-version = "1.70"'); // Should remain unchanged
+    });
   });
 
   describe('workspace member with version.workspace = true', () => {
