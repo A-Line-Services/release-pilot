@@ -131,8 +131,8 @@ serde = "1.0"
       const project = createTestProject(TEST_DIR, 'rust-version').withCargoToml(
         `[package]
 name = "test"
-rust-version = "1.70"
 version = "1.0.0"
+rust-version = "1.70"
 edition = "2021"
 `
       );
