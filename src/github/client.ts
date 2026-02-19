@@ -157,6 +157,25 @@ export class GitHubClient {
   }
 
   /**
+   * Get information about the authenticated user or bot
+   *
+   * Returns the user identity for PATs and OAuth tokens.
+   * Returns null for GitHub App installation tokens (which don't support this endpoint).
+   */
+  async getAuthenticatedUser(): Promise<{ login: string; id: number; type: string } | null> {
+    try {
+      const { data } = await this.octokit.rest.users.getAuthenticated();
+      return {
+        login: data.login,
+        id: data.id,
+        type: data.type,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Delete a GitHub release by ID
    *
    * @param releaseId - The release ID to delete

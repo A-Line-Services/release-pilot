@@ -31,6 +31,7 @@ import {
   formatCommitMessage,
   formatTag,
   type GitOptions,
+  type GitUserIdentity,
   parseTagVersion,
   pushToRemote,
   stageFiles,
@@ -65,6 +66,8 @@ interface ActionInputs {
   devSuffix: string;
   packages?: string;
   defaultBump: BumpType;
+  gitUserName?: string;
+  gitUserEmail?: string;
   npmToken?: string;
   npmRegistry?: string;
   cargoToken?: string;
@@ -95,6 +98,8 @@ function getInputs(): ActionInputs {
     devSuffix: core.getInput('dev-suffix') || 'dev',
     packages: core.getInput('packages') || undefined,
     defaultBump: (core.getInput('default-bump') || 'patch') as BumpType,
+    gitUserName: core.getInput('git-user-name') || undefined,
+    gitUserEmail: core.getInput('git-user-email') || undefined,
     npmToken: core.getInput('npm-token') || undefined,
     npmRegistry: core.getInput('npm-registry') || undefined,
     cargoToken: core.getInput('cargo-token') || undefined,
@@ -175,6 +180,56 @@ function createEcosystemContext(
     log: (msg: string) => core.info(`[${pkg.name}] ${msg}`),
     registry,
   };
+}
+
+/**
+ * Resolve the git user identity for commits.
+ *
+ * Priority:
+ * 1. Explicit inputs (git-user-name / git-user-email)
+ * 2. Auto-detect from the authenticated token (works for PATs)
+ * 3. Fall back to github-actions[bot]
+ */
+export async function resolveGitUser(
+  getAuthenticatedUser: () => Promise<{ login: string; id: number } | null>,
+  inputs: { gitUserName?: string; gitUserEmail?: string },
+  log: (msg: string) => void
+): Promise<GitUserIdentity> {
+  const DEFAULT_GIT_USER: GitUserIdentity = {
+    name: 'github-actions[bot]',
+    email: '41898282+github-actions[bot]@users.noreply.github.com',
+  };
+
+  // Both explicitly provided - use them directly
+  if (inputs.gitUserName && inputs.gitUserEmail) {
+    log(`Using configured git user: ${inputs.gitUserName}`);
+    return { name: inputs.gitUserName, email: inputs.gitUserEmail };
+  }
+
+  // Try auto-detect from token (works for PATs, may fail for app installation tokens)
+  let detected: GitUserIdentity | null = null;
+  if (!inputs.gitUserName || !inputs.gitUserEmail) {
+    const user = await getAuthenticatedUser();
+    if (user) {
+      detected = {
+        name: user.login,
+        email: `${user.id}+${user.login}@users.noreply.github.com`,
+      };
+      log(`Auto-detected git user from token: ${user.login}`);
+    }
+  }
+
+  const name = inputs.gitUserName ?? detected?.name ?? DEFAULT_GIT_USER.name;
+  const email = inputs.gitUserEmail ?? detected?.email ?? DEFAULT_GIT_USER.email;
+
+  if (!inputs.gitUserName && !detected) {
+    log(
+      'Could not detect git user from token, using default: github-actions[bot]. ' +
+        'Set git-user-name and git-user-email inputs to customize.'
+    );
+  }
+
+  return { name, email };
 }
 
 /**
@@ -328,8 +383,13 @@ export async function run(): Promise<void> {
     log: (msg) => core.info(msg),
   };
 
-  // Configure git user
-  await configureGitUser(gitOptions);
+  // Resolve and configure git user identity
+  const gitUser = await resolveGitUser(
+    () => gh.getAuthenticatedUser(),
+    inputs,
+    (msg) => core.info(msg)
+  );
+  await configureGitUser(gitOptions, gitUser);
 
   // Build registry config from inputs
   const registryConfig: RegistryConfig = {

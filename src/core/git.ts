@@ -65,29 +65,32 @@ export function parseTagVersion(tag: string, prefix: string): string {
 }
 
 /**
+ * Identity used for git commits
+ */
+export interface GitUserIdentity {
+  name: string;
+  email: string;
+}
+
+/**
  * Configure git user for commits
  *
- * Uses the GitHub Actions bot identity.
- *
  * @param options - Git options
+ * @param user - User identity (name and email) to configure
  */
-export async function configureGitUser(options: GitOptions): Promise<void> {
+export async function configureGitUser(options: GitOptions, user: GitUserIdentity): Promise<void> {
   if (options.dryRun) {
-    options.log('[dry-run] Would configure git user');
+    options.log(`[dry-run] Would configure git user as ${user.name}`);
     return;
   }
 
-  await exec.exec('git', ['config', '--local', 'user.name', 'github-actions[bot]'], {
+  await exec.exec('git', ['config', '--local', 'user.name', user.name], {
     cwd: options.cwd,
   });
 
-  await exec.exec(
-    'git',
-    ['config', '--local', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'],
-    { cwd: options.cwd }
-  );
+  await exec.exec('git', ['config', '--local', 'user.email', user.email], { cwd: options.cwd });
 
-  options.log('Configured git user as github-actions[bot]');
+  options.log(`Configured git user as ${user.name}`);
 }
 
 /**
