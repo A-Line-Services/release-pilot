@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.11] - 2026-02-19
+
+### Features
+
+- feat: make git commit identity configurable with auto-detection ([#12](https://github.com/A-Line-Services/release-pilot/pull/12)) by @Arthurdw
+
 ## [1.2.10] - 2026-02-19
 
 ### Bug Fixes
