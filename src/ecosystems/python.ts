@@ -73,13 +73,13 @@ export class PythonEcosystem extends BaseFileEcosystem {
    */
   protected parseVersion(content: string): string | null {
     // Try [project] section first (PEP 621)
-    const projectMatch = content.match(/\[project\][^[]*version\s*=\s*"([^"]+)"/s);
+    const projectMatch = content.match(/\[project\][^[]*\bversion\s*=\s*"([^"]+)"/s);
     if (projectMatch?.[1]) {
       return projectMatch[1];
     }
 
     // Try [tool.poetry] section
-    const poetryMatch = content.match(/\[tool\.poetry\][^[]*version\s*=\s*"([^"]+)"/s);
+    const poetryMatch = content.match(/\[tool\.poetry\][^[]*\bversion\s*=\s*"([^"]+)"/s);
     if (poetryMatch?.[1]) {
       return poetryMatch[1];
     }
@@ -95,7 +95,7 @@ export class PythonEcosystem extends BaseFileEcosystem {
   protected updateVersion(content: string, version: string): string {
     // Try [project] section first
     if (content.includes('[project]')) {
-      const regex = /(\[project\][^[]*version\s*=\s*)"[^"]*"/s;
+      const regex = /(\[project\][^[]*\bversion\s*=\s*)"[^"]*"/s;
       if (regex.test(content)) {
         return content.replace(regex, `$1"${version}"`);
       }
@@ -103,7 +103,7 @@ export class PythonEcosystem extends BaseFileEcosystem {
 
     // Try [tool.poetry] section
     if (content.includes('[tool.poetry]')) {
-      const regex = /(\[tool\.poetry\][^[]*version\s*=\s*)"[^"]*"/s;
+      const regex = /(\[tool\.poetry\][^[]*\bversion\s*=\s*)"[^"]*"/s;
       if (regex.test(content)) {
         return content.replace(regex, `$1"${version}"`);
       }
