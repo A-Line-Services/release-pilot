@@ -12,6 +12,8 @@ packages:
     updateVersionFile: true
     publish: false
 
+skipIfNoChanges: true
+
 git:
   floatingTags: true
 
