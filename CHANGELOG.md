@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.12] - 2026-02-23
+
+- No notable changes in this release
+
 ## [1.2.11] - 2026-02-19
 
 ### Features
