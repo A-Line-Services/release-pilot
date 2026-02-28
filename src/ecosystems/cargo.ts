@@ -212,18 +212,56 @@ export class CargoEcosystem extends BaseFileEcosystem {
    * Update version in Cargo.toml content
    *
    * Updates workspace.package.version if present, otherwise package.version.
+   * When updating a workspace root, also updates version constraints in
+   * [workspace.dependencies] for entries that have a path (local members).
    */
   protected updateVersion(content: string, version: string): string {
     // Check if using workspace versioning
     if (content.includes('[workspace.package]')) {
       // Update workspace version
       const wsRegex = /(\[workspace\.package\][^[]*\n[ \t]*version\s*=\s*)"[^"]*"/s;
-      return content.replace(wsRegex, `$1"${version}"`);
+      let updated = content.replace(wsRegex, `$1"${version}"`);
+
+      // Also update [workspace.dependencies] entries that reference local path deps
+      updated = this.updateWorkspaceDependencyVersions(updated, version);
+
+      return updated;
     }
 
     // Update package version
     const pkgRegex = /(\[package\][^[]*\n[ \t]*version\s*=\s*)"[^"]*"/s;
     return content.replace(pkgRegex, `$1"${version}"`);
+  }
+
+  /**
+   * Update version constraints in [workspace.dependencies] for entries
+   * that also have a `path` field, indicating they are local workspace members
+   * whose version should stay in sync with the workspace version.
+   *
+   * Only matches inline table entries (single-line) that contain both
+   * `version = "..."` and `path = "..."`.
+   */
+  private updateWorkspaceDependencyVersions(content: string, version: string): string {
+    const lines = content.split('\n');
+    let inWorkspaceDeps = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] as string;
+      const trimmed = line.trim();
+
+      // Track section headers
+      if (trimmed.startsWith('[')) {
+        inWorkspaceDeps = trimmed === '[workspace.dependencies]';
+        continue;
+      }
+
+      // Within [workspace.dependencies], update version in entries that have a path
+      if (inWorkspaceDeps && /path\s*=\s*"/.test(line) && /version\s*=\s*"/.test(line)) {
+        lines[i] = line.replace(/(version\s*=\s*)"[^"]*"/, `$1"${version}"`);
+      }
+    }
+
+    return lines.join('\n');
   }
 
   /**

@@ -184,6 +184,45 @@ edition = "2021"
       expect(memberContent).not.toContain('version = "2.0.0"');
     });
 
+    test('writeVersion updates workspace.dependencies entries with path', async () => {
+      const project = createTestProject(TEST_DIR, 'ws-deps').withCargoToml(
+        `[workspace]\nmembers = ["my-macros", "my-lsp"]\n\n[workspace.package]\nversion = "1.0.0"\nedition = "2021"\n\n[workspace.dependencies]\nmy-macros = { version = "1.0.0", path = "my-macros" }\n\n[package]\nname = "my-crate"\nversion.workspace = true\n\n[dependencies]\nmy-macros.workspace = true\nserde = "1.0"\n`
+      );
+
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
+
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
+      // workspace.package version should be updated
+      expect(content).toMatch(/\[workspace\.package\][^[]*version = "2\.0\.0"/s);
+      // workspace.dependencies entry with path should be updated
+      expect(content).toContain('my-macros = { version = "2.0.0", path = "my-macros" }');
+      // Regular dependencies should not be affected
+      expect(content).toContain('serde = "1.0"');
+    });
+
+    test('writeVersion does not update workspace.dependencies without path', async () => {
+      const project = createTestProject(TEST_DIR, 'ws-deps-no-path').withCargoToml(
+        `[workspace]\nmembers = ["member"]\n\n[workspace.package]\nversion = "1.0.0"\n\n[workspace.dependencies]\nexternal-crate = { version = "3.5.0", features = ["foo"] }\n\n[package]\nname = "test"\nversion.workspace = true\n`
+      );
+
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
+
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
+      // External dependency without path should remain unchanged
+      expect(content).toContain('external-crate = { version = "3.5.0", features = ["foo"] }');
+    });
+
+    test('writeVersion handles path before version in workspace.dependencies', async () => {
+      const project = createTestProject(TEST_DIR, 'ws-deps-path-first').withCargoToml(
+        `[workspace]\nmembers = ["my-macros"]\n\n[workspace.package]\nversion = "1.0.0"\n\n[workspace.dependencies]\nmy-macros = { path = "my-macros", version = "1.0.0" }\n\n[package]\nname = "test"\nversion.workspace = true\n`
+      );
+
+      await cargo.writeVersion(createContext(project.path), '2.0.0');
+
+      const content = readFileSync(join(project.path, 'Cargo.toml'), 'utf-8');
+      expect(content).toContain('my-macros = { path = "my-macros", version = "2.0.0" }');
+    });
+
     test('getVersionFiles returns workspace root Cargo.toml path for workspace member', async () => {
       const project = createTestProject(TEST_DIR, 'ws-files')
         .withCargoToml(
