@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.13] - 2026-02-28
+
+### Bug Fixes
+
+- fix: update workspace.dependencies versions for path deps during cargo version bump ([#13](https://github.com/A-Line-Services/release-pilot/pull/13)) by @Arthurdw
+
 ## [1.2.12] - 2026-02-23
 
 - No notable changes in this release
