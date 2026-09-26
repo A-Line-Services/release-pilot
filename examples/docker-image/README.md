@@ -47,7 +47,7 @@ docker:
 ```yaml
 # workflow
 - name: Log in to Docker Hub
-  uses: docker/login-action@v3
+  uses: docker/login-action@v4
   with:
     username: ${{ secrets.DOCKERHUB_USERNAME }}
     password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -65,7 +65,7 @@ docker:
 ```yaml
 # workflow
 - name: Configure AWS credentials
-  uses: aws-actions/configure-aws-credentials@v4
+  uses: aws-actions/configure-aws-credentials@v6
   with:
     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
