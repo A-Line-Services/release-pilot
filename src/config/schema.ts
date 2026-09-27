@@ -90,6 +90,14 @@ export const DockerConfig = a.object(
 
     /** Whether to push the image (default: true) */
     push: a.optional(a.boolean()),
+
+    /**
+     * Build cache (default: none)
+     * - 'gha': GitHub Actions cache (--cache-from type=gha --cache-to type=gha,mode=max)
+     * - { from, to }: raw values passed to --cache-from / --cache-to
+     * Validated in the loader since the schema has no union type.
+     */
+    cache: a.optional(a.any()),
   },
   { id: 'DockerConfig' }
 );

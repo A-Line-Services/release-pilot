@@ -75,6 +75,38 @@ packages:
       expect(config.packages?.[0]?.docker?.platforms).toHaveLength(2);
     });
 
+    test('loads docker cache shorthand and object forms', () => {
+      const configPath = join(TEST_DIR, 'docker-cache.yml');
+      writeFileSync(
+        configPath,
+        `
+packages:
+  - name: gha
+    ecosystem: docker
+    docker:
+      image: myorg/api
+      cache: gha
+  - name: registry
+    ecosystem: docker
+    docker:
+      image: myorg/api
+      cache:
+        from: type=registry,ref=ghcr.io/myorg/api:cache
+        to: type=registry,ref=ghcr.io/myorg/api:cache,mode=max
+`
+      );
+
+      const config = applyDefaults(loadConfig(configPath));
+      expect(config.packages[0]?.docker?.cache).toEqual({
+        from: 'type=gha',
+        to: 'type=gha,mode=max',
+      });
+      expect(config.packages[1]?.docker?.cache).toEqual({
+        from: 'type=registry,ref=ghcr.io/myorg/api:cache',
+        to: 'type=registry,ref=ghcr.io/myorg/api:cache,mode=max',
+      });
+    });
+
     test('loads config with all sections', () => {
       const configPath = join(TEST_DIR, 'full.yml');
       writeFileSync(
@@ -278,6 +310,38 @@ packages:
       expect(dockerConfig?.push).toBe(true);
       expect(dockerConfig?.tags).toEqual(['latest', '{version}']);
       expect(dockerConfig?.devTags).toEqual(['dev', '{version}']);
+    });
+
+    test('leaves docker cache unset by default', () => {
+      const config = applyDefaults({
+        packages: [{ name: 'app', ecosystem: 'docker', docker: { image: 'myorg/app' } }],
+      });
+
+      expect(config.packages[0]?.docker?.cache).toBeUndefined();
+    });
+
+    test('rejects an unknown docker cache value', () => {
+      expect(() =>
+        applyDefaults({
+          packages: [
+            { name: 'app', ecosystem: 'docker', docker: { image: 'myorg/app', cache: 'redis' } },
+          ],
+        })
+      ).toThrow('docker.cache');
+    });
+
+    test('rejects a docker cache object with non-string fields', () => {
+      expect(() =>
+        applyDefaults({
+          packages: [
+            {
+              name: 'app',
+              ecosystem: 'docker',
+              docker: { image: 'myorg/app', cache: { from: 1 } },
+            },
+          ],
+        })
+      ).toThrow('docker.cache');
     });
 
     test('applies default versionFiles settings', () => {

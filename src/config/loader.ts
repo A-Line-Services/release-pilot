@@ -63,6 +63,15 @@ export interface ResolvedDockerConfig {
   tags: string[];
   devTags: string[];
   push: boolean;
+  cache?: ResolvedDockerCache;
+}
+
+/**
+ * Resolved buildx cache settings (values for --cache-from / --cache-to)
+ */
+export interface ResolvedDockerCache {
+  from?: string;
+  to?: string;
 }
 
 /**
@@ -393,7 +402,30 @@ function applyDockerDefaults(docker: DockerConfigType): ResolvedDockerConfig {
     tags: docker.tags ?? DEFAULT_DOCKER.tags,
     devTags: docker.devTags ?? DEFAULT_DOCKER.devTags,
     push: docker.push ?? DEFAULT_DOCKER.push,
+    cache: resolveDockerCache(docker.cache),
   };
+}
+
+function resolveDockerCache(cache: unknown): ResolvedDockerCache | undefined {
+  if (cache === undefined) {
+    return undefined;
+  }
+
+  if (cache === 'gha') {
+    return { from: 'type=gha', to: 'type=gha,mode=max' };
+  }
+
+  if (typeof cache === 'object' && cache !== null && !Array.isArray(cache)) {
+    const { from, to } = cache as Record<string, unknown>;
+    const valid = (value: unknown) => value === undefined || typeof value === 'string';
+    if (valid(from) && valid(to)) {
+      return { from: from as string | undefined, to: to as string | undefined };
+    }
+  }
+
+  throw new Error(
+    `Invalid docker.cache: expected "gha" or { from, to } with string values, got ${JSON.stringify(cache)}`
+  );
 }
 
 function applyLabelsDefaults(labels?: LabelsConfigType): ResolvedLabelsConfig {
