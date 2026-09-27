@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.14] - 2026-09-27
+
+### Chores
+
+- chore: refresh dependencies and pinned GitHub Actions to current releases ([#14](https://github.com/A-Line-Services/release-pilot/pull/14)) by @Copilot
+
 ## [1.2.13] - 2026-02-28
 
 ### Bug Fixes
