@@ -18,15 +18,8 @@ A Rust service whose release is a Docker image rather than a crates.io publish.
 ## Requirements
 
 - `docker/setup-buildx-action` must run before release-pilot. The default `docker` driver can't export the `gha` cache.
-- Log in to the registry before release-pilot (here with `docker/login-action`).
-  To let release-pilot log in instead, remove that step and pass the credentials:
-
-  ```yaml
-  - uses: a-line-services/release-pilot@v1
-    with:
-      docker-username: ${{ github.actor }}
-      docker-password: ${{ secrets.GITHUB_TOKEN }}
-  ```
+- release-pilot logs in to `ghcr.io` with the `docker-username`/`docker-password` inputs.
+  You can use `docker/login-action` before release-pilot instead and drop those inputs.
 
 ## Secrets Required
 
