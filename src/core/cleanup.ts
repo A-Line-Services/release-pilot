@@ -312,6 +312,7 @@ export async function cleanupReleaseType(
           dryRun: options.dryRun,
           log: options.log,
           registry: options.registryConfig,
+          docker: pkg.docker,
         };
 
         try {
