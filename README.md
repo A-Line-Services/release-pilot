@@ -92,6 +92,8 @@ git:
 | `npm-token` | NPM registry token for publishing | - |
 | `npm-registry` | NPM registry URL | `https://registry.npmjs.org` |
 | `cargo-token` | Cargo registry token for crates.io | - |
+| `docker-username` | Docker registry username (used when `docker.username` is unset) | - |
+| `docker-password` | Docker registry password/token (used when `docker.password` is unset; masked) | - |
 
 ## Outputs
 
@@ -152,6 +154,8 @@ Report what would happen without making changes:
 
 ## Docker Support
 
+Docker packages are built and pushed with `docker buildx build --push`, tagged from the release version.
+
 ```yaml
 packages:
   - name: api-image
@@ -166,7 +170,73 @@ packages:
         - latest
         - "{version}"
         - "{major}.{minor}"
+      cache: gha
 ```
+
+Run [`docker/setup-buildx-action`](https://github.com/docker/setup-buildx-action) before release-pilot. The default `docker` driver can't export a build cache or build multi-platform images.
+
+### Build cache
+
+`docker.cache` is off by default.
+
+- `cache: gha` uses the GitHub Actions cache (`--cache-from type=gha --cache-to type=gha,mode=max`).
+- Or pass raw buildx values:
+
+  ```yaml
+  cache:
+    from: type=registry,ref=ghcr.io/myorg/api:buildcache
+    to: type=registry,ref=ghcr.io/myorg/api:buildcache,mode=max
+  ```
+
+### Registry login
+
+Pick one:
+
+1. **Log in before release-pilot** (recommended) with [`docker/login-action`](https://github.com/docker/login-action) and leave the credentials unset. release-pilot then skips `docker login`.
+2. **Pass credentials to release-pilot** with the `docker-username` / `docker-password` inputs, or with `docker.username` / `docker.password` in the config. Config values take precedence.
+
+### Example: Rust binary shipped as a Docker image
+
+```yaml
+# .github/release-pilot.yml
+packages:
+  - name: my-service
+    ecosystem: cargo
+    publish: false          # bump Cargo.toml, don't publish to crates.io
+  - name: my-service-image
+    ecosystem: docker
+    docker:
+      registry: ghcr.io
+      image: myorg/my-service
+      tags: ["{version}", "latest"]
+      cache: gha
+```
+
+```yaml
+# .github/workflows/release.yml
+permissions:
+  contents: write
+  pull-requests: read
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: a-line-services/release-pilot@v1
+```
+
+See [examples/rust-docker](./examples/rust-docker) for the full setup.
 
 ## Registry Authentication
 
@@ -221,10 +291,17 @@ packages:
     docker:               # Docker-specific config
       registry: string    # Registry URL (default: docker.io)
       image: string       # Image name (required)
+      username: string    # Registry username (fallback: docker-username input)
+      password: string    # Registry password (fallback: docker-password input)
       dockerfile: string  # Dockerfile path (default: Dockerfile)
+      context: string     # Build context (default: package path)
+      buildArgs: object   # Build arguments
       platforms: string[] # Target platforms
+      target: string      # Multi-stage build target
       tags: string[]      # Tag templates
       devTags: string[]   # Dev release tag templates
+      push: boolean       # Push the image (default: true)
+      cache: gha | {from, to}  # Build cache (default: none)
 
 releaseOrder: string[]    # Package release order
 
@@ -327,6 +404,7 @@ See the [examples](./examples) directory for complete configurations:
 - [Python Package](./examples/python-package) - Python package for PyPI
 - [Go Module](./examples/go-module) - Go module with git tags
 - [Docker Image](./examples/docker-image) - Multi-arch Docker builds
+- [Rust + Docker](./examples/rust-docker) - Cargo version bump with a Docker image push
 - [Multi-Ecosystem](./examples/multi-ecosystem) - Rust + Node.js bindings
 
 ## Development
