@@ -51,6 +51,13 @@ export const DockerConfig = a.object(
     /** Docker registry (default: docker.io) */
     registry: a.optional(a.string()),
 
+    /**
+     * Push the same build to several registries (replaces registry).
+     * Credentials can't be shared across registries: log in beforehand,
+     * e.g. with docker/login-action.
+     */
+    registries: a.optional(a.array(a.string())),
+
     /** Image name without registry prefix (required) */
     image: a.string(),
 
@@ -90,6 +97,14 @@ export const DockerConfig = a.object(
 
     /** Whether to push the image (default: true) */
     push: a.optional(a.boolean()),
+
+    /**
+     * Build cache (default: none)
+     * - 'gha': GitHub Actions cache (--cache-from type=gha --cache-to type=gha,mode=max)
+     * - { from, to }: raw values passed to --cache-from / --cache-to
+     * Validated in the loader since the schema has no union type.
+     */
+    cache: a.optional(a.any()),
   },
   { id: 'DockerConfig' }
 );

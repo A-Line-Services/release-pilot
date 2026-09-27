@@ -9,6 +9,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ResolvedDockerConfig } from '../config/loader.js';
 
 /**
  * Registry configuration for publishing
@@ -20,6 +21,10 @@ export interface RegistryConfig {
   npmRegistry?: string;
   /** Cargo registry token */
   cargoToken?: string;
+  /** Docker registry username (fallback when docker.username is not set) */
+  dockerUsername?: string;
+  /** Docker registry password/token (fallback when docker.password is not set) */
+  dockerPassword?: string;
 }
 
 /**
@@ -36,6 +41,12 @@ export interface EcosystemContext {
   log: (message: string) => void;
   /** Registry credentials for publishing */
   registry?: RegistryConfig;
+  /** Version being released */
+  version?: string;
+  /** Whether this is a dev/prerelease */
+  isPrerelease?: boolean;
+  /** Docker configuration (docker ecosystem only) */
+  docker?: ResolvedDockerConfig;
 }
 
 /**

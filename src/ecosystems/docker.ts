@@ -8,20 +8,19 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ExecOptions } from '@actions/exec';
 import type { ResolvedDockerConfig } from '../config/loader.js';
 import type { Ecosystem, EcosystemContext } from './base.js';
 
 /**
- * Extended context for Docker ecosystem
+ * Command runner signature (matches @actions/exec's exec)
  */
-export interface DockerEcosystemContext extends EcosystemContext {
-  /** Docker-specific configuration */
-  docker?: ResolvedDockerConfig;
-  /** Current version being released */
-  version?: string;
-  /** Whether this is a dev/prerelease */
-  isPrerelease?: boolean;
-}
+export type ExecFn = (command: string, args?: string[], options?: ExecOptions) => Promise<number>;
+
+const defaultExec: ExecFn = async (command, args, options) => {
+  const { exec } = await import('@actions/exec');
+  return exec(command, args, options);
+};
 
 /**
  * Docker ecosystem implementation
@@ -39,6 +38,11 @@ export interface DockerEcosystemContext extends EcosystemContext {
 export class DockerEcosystem implements Ecosystem {
   readonly name = 'docker';
   readonly supportsUnpublish = true;
+
+  /**
+   * @param exec - Command runner (defaults to @actions/exec)
+   */
+  constructor(private readonly exec: ExecFn = defaultExec) {}
 
   /**
    * Detect if this is a Docker project
@@ -66,8 +70,7 @@ export class DockerEcosystem implements Ecosystem {
    * Get version files - returns Dockerfile for tracking
    */
   async getVersionFiles(ctx: EcosystemContext): Promise<string[]> {
-    const dockerCtx = ctx as DockerEcosystemContext;
-    const dockerfile = dockerCtx.docker?.dockerfile ?? 'Dockerfile';
+    const dockerfile = ctx.docker?.dockerfile ?? 'Dockerfile';
     return [dockerfile];
   }
 
@@ -75,36 +78,40 @@ export class DockerEcosystem implements Ecosystem {
    * Build and push Docker image
    */
   async publish(ctx: EcosystemContext): Promise<void> {
-    const dockerCtx = ctx as DockerEcosystemContext;
-    const config = dockerCtx.docker;
+    const config = ctx.docker;
 
     if (!config) {
       throw new Error('Docker configuration is required');
     }
 
+    if (!ctx.version) {
+      throw new Error('Docker publish requires the release version');
+    }
+
+    const tags = this.buildTags(config, ctx.version, ctx.isPrerelease ?? false);
+    const imageNames = config.registries.map((registry) => `${registry}/${config.image}`);
+    const imageRefs = imageNames.flatMap((name) => tags.map((tag) => `${name}:${tag}`));
+
     if (ctx.dryRun) {
-      ctx.log('[dry-run] Would build and push Docker image');
+      ctx.log(`[dry-run] Would build and push Docker image: ${imageRefs.join(', ')}`);
       return;
     }
 
-    const { exec } = await import('@actions/exec');
-
-    // Login to registry if credentials provided
-    if (config.username && config.password) {
-      await exec('docker', ['login', config.registry, '-u', config.username, '--password-stdin'], {
-        input: Buffer.from(config.password),
+    // Login to registry if credentials provided; otherwise rely on an existing
+    // login (e.g. docker/login-action earlier in the workflow)
+    const { username, password } = this.credentials(ctx, config);
+    const [registry] = config.registries;
+    if (username && password && registry && config.registries.length === 1) {
+      await this.exec('docker', ['login', registry, '-u', username, '--password-stdin'], {
+        input: Buffer.from(password),
         cwd: ctx.path,
       });
-      ctx.log(`Logged in to ${config.registry}`);
+      ctx.log(`Logged in to ${registry}`);
+    } else if (username && password) {
+      ctx.log(
+        'Skipping docker login: credentials only apply to a single registry. Log in to each registry beforehand (e.g. docker/login-action).'
+      );
     }
-
-    // Build tags
-    const tags = this.buildTags(
-      config,
-      dockerCtx.version ?? '0.0.0',
-      dockerCtx.isPrerelease ?? false
-    );
-    const fullImageName = `${config.registry}/${config.image}`;
 
     // Build command args
     const buildArgs: string[] = ['buildx', 'build'];
@@ -129,9 +136,17 @@ export class DockerEcosystem implements Ecosystem {
       buildArgs.push('--target', config.target);
     }
 
+    // Add build cache
+    if (config.cache?.from) {
+      buildArgs.push('--cache-from', config.cache.from);
+    }
+    if (config.cache?.to) {
+      buildArgs.push('--cache-to', config.cache.to);
+    }
+
     // Add tags
-    for (const tag of tags) {
-      buildArgs.push('-t', `${fullImageName}:${tag}`);
+    for (const ref of imageRefs) {
+      buildArgs.push('-t', ref);
     }
 
     // Push if enabled
@@ -142,10 +157,23 @@ export class DockerEcosystem implements Ecosystem {
     // Add context
     buildArgs.push(config.context ?? ctx.path);
 
-    // Run build
-    await exec('docker', buildArgs, { cwd: ctx.path });
+    // Run build (env is inherited; type=gha cache needs ACTIONS_RESULTS_URL etc.)
+    await this.exec('docker', buildArgs, { cwd: ctx.path });
 
-    ctx.log(`Built and pushed ${fullImageName} with tags: ${tags.join(', ')}`);
+    ctx.log(`Built and pushed ${imageNames.join(', ')} with tags: ${tags.join(', ')}`);
+  }
+
+  /**
+   * Registry credentials: config values win, action inputs are the fallback
+   */
+  private credentials(
+    ctx: EcosystemContext,
+    config: ResolvedDockerConfig
+  ): { username?: string; password?: string } {
+    return {
+      username: config.username ?? ctx.registry?.dockerUsername,
+      password: config.password ?? ctx.registry?.dockerPassword,
+    };
   }
 
   /**
@@ -193,7 +221,7 @@ export class DockerEcosystem implements Ecosystem {
   }
 
   /**
-   * Delete a Docker image tag from the registry
+   * Delete a Docker image tag from every configured registry
    *
    * Supports:
    * - GitHub Container Registry (ghcr.io)
@@ -206,8 +234,7 @@ export class DockerEcosystem implements Ecosystem {
    * @returns true if deleted successfully
    */
   async unpublish(ctx: EcosystemContext, version: string): Promise<boolean> {
-    const dockerCtx = ctx as DockerEcosystemContext;
-    const config = dockerCtx.docker;
+    const config = ctx.docker;
 
     if (!config) {
       ctx.log('Cannot delete image: Docker configuration is required');
@@ -219,9 +246,25 @@ export class DockerEcosystem implements Ecosystem {
       return true;
     }
 
-    const registry = config.registry || 'docker.io';
     const tag = version.replace(/^v/, ''); // Remove v prefix for tag
 
+    // Try every registry, even after a failure
+    const results: boolean[] = [];
+    for (const registry of config.registries) {
+      results.push(await this.deleteTag(ctx, config, registry, tag));
+    }
+    return results.every(Boolean);
+  }
+
+  /**
+   * Delete a tag from one registry
+   */
+  private async deleteTag(
+    ctx: EcosystemContext,
+    config: ResolvedDockerConfig,
+    registry: string,
+    tag: string
+  ): Promise<boolean> {
     try {
       // Route to appropriate registry handler
       if (registry === 'ghcr.io') {
@@ -229,7 +272,12 @@ export class DockerEcosystem implements Ecosystem {
       }
 
       if (registry === 'docker.io') {
-        return await this.deleteFromDockerHub(ctx, config.image, tag, config);
+        return await this.deleteFromDockerHub(
+          ctx,
+          config.image,
+          tag,
+          this.credentials(ctx, config)
+        );
       }
 
       if (registry.includes('gcr.io')) {
@@ -241,9 +289,15 @@ export class DockerEcosystem implements Ecosystem {
       }
 
       // Generic OCI registry - try Docker Registry HTTP API V2
-      return await this.deleteFromGenericRegistry(ctx, registry, config.image, tag, config);
+      return await this.deleteFromGenericRegistry(
+        ctx,
+        registry,
+        config.image,
+        tag,
+        this.credentials(ctx, config)
+      );
     } catch (error) {
-      ctx.log(`Failed to delete ${config.image}:${tag}: ${error}`);
+      ctx.log(`Failed to delete ${registry}/${config.image}:${tag}: ${error}`);
       return false;
     }
   }
@@ -256,8 +310,6 @@ export class DockerEcosystem implements Ecosystem {
     image: string,
     tag: string
   ): Promise<boolean> {
-    const { exec } = await import('@actions/exec');
-
     try {
       // gh api -X DELETE /user/packages/container/{package_name}/versions/{version_id}
       // First, we need to get the version ID for the tag
@@ -275,7 +327,7 @@ export class DockerEcosystem implements Ecosystem {
 
       // Use gh CLI to delete the package version
       // Note: This requires the package to be owned by the authenticated user/org
-      await exec(
+      await this.exec(
         'gh',
         [
           'api',
@@ -297,7 +349,7 @@ export class DockerEcosystem implements Ecosystem {
         const org = parts[0];
         const packageName = parts.slice(1).join('/');
 
-        await exec(
+        await this.exec(
           'gh',
           [
             'api',
@@ -326,11 +378,8 @@ export class DockerEcosystem implements Ecosystem {
     ctx: EcosystemContext,
     image: string,
     tag: string,
-    config: ResolvedDockerConfig
+    { username, password }: { username?: string; password?: string }
   ): Promise<boolean> {
-    const username = config.username;
-    const password = config.password;
-
     if (!username || !password) {
       ctx.log('Cannot delete from Docker Hub: username and password required');
       return false;
@@ -383,11 +432,9 @@ export class DockerEcosystem implements Ecosystem {
     image: string,
     tag: string
   ): Promise<boolean> {
-    const { exec } = await import('@actions/exec');
-
     try {
       const fullImage = `${registry}/${image}:${tag}`;
-      await exec(
+      await this.exec(
         'gcloud',
         ['container', 'images', 'delete', fullImage, '--quiet', '--force-delete-tags'],
         {
@@ -412,8 +459,6 @@ export class DockerEcosystem implements Ecosystem {
     image: string,
     tag: string
   ): Promise<boolean> {
-    const { exec } = await import('@actions/exec');
-
     try {
       // Extract region from registry URL
       // Format: {account}.dkr.ecr.{region}.amazonaws.com
@@ -433,7 +478,7 @@ export class DockerEcosystem implements Ecosystem {
         args.push('--region', region);
       }
 
-      await exec('aws', args, { cwd: ctx.path });
+      await this.exec('aws', args, { cwd: ctx.path });
 
       ctx.log(`Deleted ${registry}/${image}:${tag}`);
       return true;
@@ -451,7 +496,7 @@ export class DockerEcosystem implements Ecosystem {
     registry: string,
     image: string,
     tag: string,
-    config: ResolvedDockerConfig
+    { username, password }: { username?: string; password?: string }
   ): Promise<boolean> {
     try {
       // Get manifest digest first
@@ -461,8 +506,8 @@ export class DockerEcosystem implements Ecosystem {
       };
 
       // Add auth if provided
-      if (config.username && config.password) {
-        const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
+      if (username && password) {
+        const auth = Buffer.from(`${username}:${password}`).toString('base64');
         headers.Authorization = `Basic ${auth}`;
       }
 

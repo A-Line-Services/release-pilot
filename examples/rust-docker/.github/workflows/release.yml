@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Stable release every Monday at 9:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Release mode'
+        type: choice
+        options:
+          - stable
+          - dev
+        default: stable
+
+permissions:
+  contents: write
+  pull-requests: read
+  packages: write  # Required for GHCR
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore(release):')"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Required for the gha build cache (the default docker driver can't export it)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - uses: a-line-services/release-pilot@v1
+        with:
+          # schedule -> stable, manual -> chosen mode, push -> dev
+          mode: ${{ github.event_name == 'schedule' && 'stable' || inputs.mode || 'dev' }}
+          docker-username: ${{ github.actor }}
+          docker-password: ${{ secrets.GITHUB_TOKEN }}

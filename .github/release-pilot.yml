@@ -56,6 +56,10 @@ versionFiles:
       pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
       replace: 'uses: a-line-services/release-pilot@v{major}'
 
+    - file: examples/rust-docker/.github/workflows/release.yml
+      pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
+      replace: 'uses: a-line-services/release-pilot@v{major}'
+
     - file: examples/multi-ecosystem/.github/workflows/release.yml
       pattern: 'uses: a-line-services/release-pilot@v[0-9]+'
       replace: 'uses: a-line-services/release-pilot@v{major}'

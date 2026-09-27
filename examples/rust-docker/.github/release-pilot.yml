@@ -1,0 +1,18 @@
+# Release Pilot configuration for a Rust service shipped as a Docker image
+
+packages:
+  # Bump Cargo.toml, but don't publish to crates.io
+  - name: my-service
+    ecosystem: cargo
+    publish: false
+
+  - name: my-service-image
+    ecosystem: docker
+    docker:
+      registry: ghcr.io
+      image: myorg/my-service
+      tags: ["{version}", "latest"]
+      cache: gha
+
+version:
+  devRelease: true

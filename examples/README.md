@@ -12,6 +12,7 @@ Example configurations for common use cases.
 | [python-package](./python-package) | Python package published to PyPI |
 | [go-module](./go-module) | Go module with git tag versioning |
 | [docker-image](./docker-image) | Docker image with multi-arch builds |
+| [rust-docker](./rust-docker) | Rust service shipped as a Docker image (GHA build cache) |
 | [multi-ecosystem](./multi-ecosystem) | Rust + Node.js bindings |
 
 ## Quick Start

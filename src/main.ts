@@ -58,7 +58,7 @@ import { filterPRsSinceDate, findLastStableRelease } from './github/releases.js'
 /**
  * Action input configuration
  */
-interface ActionInputs {
+export interface ActionInputs {
   githubToken: string;
   configFile: string;
   mode: 'stable' | 'dev' | 'check';
@@ -71,6 +71,8 @@ interface ActionInputs {
   npmToken?: string;
   npmRegistry?: string;
   cargoToken?: string;
+  dockerUsername?: string;
+  dockerPassword?: string;
 }
 
 /**
@@ -89,7 +91,12 @@ interface ReleaseResult {
 /**
  * Get action inputs from the workflow
  */
-function getInputs(): ActionInputs {
+export function getInputs(): ActionInputs {
+  const dockerPassword = core.getInput('docker-password') || undefined;
+  if (dockerPassword) {
+    core.setSecret(dockerPassword);
+  }
+
   return {
     githubToken: core.getInput('github-token', { required: true }),
     configFile: core.getInput('config-file') || '.github/release-pilot.yml',
@@ -103,6 +110,8 @@ function getInputs(): ActionInputs {
     npmToken: core.getInput('npm-token') || undefined,
     npmRegistry: core.getInput('npm-registry') || undefined,
     cargoToken: core.getInput('cargo-token') || undefined,
+    dockerUsername: core.getInput('docker-username') || undefined,
+    dockerPassword,
   };
 }
 
@@ -168,17 +177,24 @@ function setOutputs(result: ReleaseResult): void {
 /**
  * Create ecosystem context for a package
  */
-function createEcosystemContext(
+export function createEcosystemContext(
   pkg: ResolvedPackageConfig,
-  dryRun: boolean,
-  registry?: RegistryConfig
+  options: {
+    dryRun: boolean;
+    registry?: RegistryConfig;
+    version?: string;
+    isPrerelease?: boolean;
+  }
 ): EcosystemContext {
   return {
     path: pkg.path,
     versionFile: pkg.versionFile,
-    dryRun,
+    dryRun: options.dryRun,
     log: (msg: string) => core.info(`[${pkg.name}] ${msg}`),
-    registry,
+    registry: options.registry,
+    version: options.version,
+    isPrerelease: options.isPrerelease,
+    docker: pkg.docker,
   };
 }
 
@@ -397,6 +413,14 @@ export async function run(): Promise<void> {
     npmToken: inputs.npmToken,
     npmRegistry: inputs.npmRegistry,
     cargoToken: inputs.cargoToken,
+    dockerUsername: inputs.dockerUsername,
+    dockerPassword: inputs.dockerPassword,
+  };
+  const contextOptions = {
+    dryRun: inputs.dryRun,
+    registry: registryConfig,
+    version: newVersion,
+    isPrerelease: Boolean(prerelease) || inputs.mode === 'dev',
   };
 
   // Update versions in all packages
@@ -416,7 +440,7 @@ export async function run(): Promise<void> {
       continue;
     }
 
-    const ctx = createEcosystemContext(pkg, inputs.dryRun, registryConfig);
+    const ctx = createEcosystemContext(pkg, contextOptions);
 
     core.info(`Updating ${pkg.name} (${pkg.ecosystem})...`);
 
@@ -564,7 +588,7 @@ export async function run(): Promise<void> {
         continue;
       }
 
-      const ctx = createEcosystemContext(pkg, inputs.dryRun, registryConfig);
+      const ctx = createEcosystemContext(pkg, contextOptions);
 
       core.info(`Publishing ${pkg.name}...`);
       await ecosystem.publish(ctx);
