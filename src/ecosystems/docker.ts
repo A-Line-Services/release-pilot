@@ -89,8 +89,8 @@ export class DockerEcosystem implements Ecosystem {
     }
 
     const tags = this.buildTags(config, ctx.version, ctx.isPrerelease ?? false);
-    const fullImageName = `${config.registry}/${config.image}`;
-    const imageRefs = tags.map((tag) => `${fullImageName}:${tag}`);
+    const imageNames = config.registries.map((registry) => `${registry}/${config.image}`);
+    const imageRefs = imageNames.flatMap((name) => tags.map((tag) => `${name}:${tag}`));
 
     if (ctx.dryRun) {
       ctx.log(`[dry-run] Would build and push Docker image: ${imageRefs.join(', ')}`);
@@ -100,12 +100,17 @@ export class DockerEcosystem implements Ecosystem {
     // Login to registry if credentials provided; otherwise rely on an existing
     // login (e.g. docker/login-action earlier in the workflow)
     const { username, password } = this.credentials(ctx, config);
-    if (username && password) {
-      await this.exec('docker', ['login', config.registry, '-u', username, '--password-stdin'], {
+    const [registry] = config.registries;
+    if (username && password && registry && config.registries.length === 1) {
+      await this.exec('docker', ['login', registry, '-u', username, '--password-stdin'], {
         input: Buffer.from(password),
         cwd: ctx.path,
       });
-      ctx.log(`Logged in to ${config.registry}`);
+      ctx.log(`Logged in to ${registry}`);
+    } else if (username && password) {
+      ctx.log(
+        'Skipping docker login: credentials only apply to a single registry. Log in to each registry beforehand (e.g. docker/login-action).'
+      );
     }
 
     // Build command args
@@ -155,7 +160,7 @@ export class DockerEcosystem implements Ecosystem {
     // Run build (env is inherited; type=gha cache needs ACTIONS_RESULTS_URL etc.)
     await this.exec('docker', buildArgs, { cwd: ctx.path });
 
-    ctx.log(`Built and pushed ${fullImageName} with tags: ${tags.join(', ')}`);
+    ctx.log(`Built and pushed ${imageNames.join(', ')} with tags: ${tags.join(', ')}`);
   }
 
   /**
@@ -216,7 +221,7 @@ export class DockerEcosystem implements Ecosystem {
   }
 
   /**
-   * Delete a Docker image tag from the registry
+   * Delete a Docker image tag from every configured registry
    *
    * Supports:
    * - GitHub Container Registry (ghcr.io)
@@ -241,9 +246,25 @@ export class DockerEcosystem implements Ecosystem {
       return true;
     }
 
-    const registry = config.registry || 'docker.io';
     const tag = version.replace(/^v/, ''); // Remove v prefix for tag
 
+    // Try every registry, even after a failure
+    const results: boolean[] = [];
+    for (const registry of config.registries) {
+      results.push(await this.deleteTag(ctx, config, registry, tag));
+    }
+    return results.every(Boolean);
+  }
+
+  /**
+   * Delete a tag from one registry
+   */
+  private async deleteTag(
+    ctx: EcosystemContext,
+    config: ResolvedDockerConfig,
+    registry: string,
+    tag: string
+  ): Promise<boolean> {
     try {
       // Route to appropriate registry handler
       if (registry === 'ghcr.io') {
@@ -276,7 +297,7 @@ export class DockerEcosystem implements Ecosystem {
         this.credentials(ctx, config)
       );
     } catch (error) {
-      ctx.log(`Failed to delete ${config.image}:${tag}: ${error}`);
+      ctx.log(`Failed to delete ${registry}/${config.image}:${tag}: ${error}`);
       return false;
     }
   }

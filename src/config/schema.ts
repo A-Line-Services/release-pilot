@@ -51,6 +51,13 @@ export const DockerConfig = a.object(
     /** Docker registry (default: docker.io) */
     registry: a.optional(a.string()),
 
+    /**
+     * Push the same build to several registries (replaces registry).
+     * Credentials can't be shared across registries: log in beforehand,
+     * e.g. with docker/login-action.
+     */
+    registries: a.optional(a.array(a.string())),
+
     /** Image name without registry prefix (required) */
     image: a.string(),
 

@@ -72,6 +72,7 @@ packages:
 
       const config = loadConfig(configPath);
       expect(config.packages?.[0]?.docker?.registry).toBe('ghcr.io');
+      expect(applyDefaults(config).packages[0]?.docker?.registries).toEqual(['ghcr.io']);
       expect(config.packages?.[0]?.docker?.platforms).toHaveLength(2);
     });
 
@@ -305,7 +306,7 @@ packages:
       });
 
       const dockerConfig = config.packages[0]?.docker;
-      expect(dockerConfig?.registry).toBe('docker.io');
+      expect(dockerConfig?.registries).toEqual(['docker.io']);
       expect(dockerConfig?.dockerfile).toBe('Dockerfile');
       expect(dockerConfig?.push).toBe(true);
       expect(dockerConfig?.tags).toEqual(['latest', '{version}']);
@@ -342,6 +343,63 @@ packages:
           ],
         })
       ).toThrow('docker.cache');
+    });
+
+    test('resolves docker registries list', () => {
+      const config = applyDefaults({
+        packages: [
+          {
+            name: 'app',
+            ecosystem: 'docker',
+            docker: { image: 'myorg/app', registries: ['ghcr.io', 'docker.io'] },
+          },
+        ],
+      });
+
+      expect(config.packages[0]?.docker?.registries).toEqual(['ghcr.io', 'docker.io']);
+    });
+
+    test('rejects setting both docker registry and registries', () => {
+      expect(() =>
+        applyDefaults({
+          packages: [
+            {
+              name: 'app',
+              ecosystem: 'docker',
+              docker: { image: 'myorg/app', registry: 'ghcr.io', registries: ['docker.io'] },
+            },
+          ],
+        })
+      ).toThrow('docker.registries');
+    });
+
+    test('rejects an empty docker registries list', () => {
+      expect(() =>
+        applyDefaults({
+          packages: [
+            { name: 'app', ecosystem: 'docker', docker: { image: 'myorg/app', registries: [] } },
+          ],
+        })
+      ).toThrow('docker.registries');
+    });
+
+    test('rejects docker credentials with several registries', () => {
+      expect(() =>
+        applyDefaults({
+          packages: [
+            {
+              name: 'app',
+              ecosystem: 'docker',
+              docker: {
+                image: 'myorg/app',
+                registries: ['ghcr.io', 'docker.io'],
+                username: 'bot',
+                password: 'secret',
+              },
+            },
+          ],
+        })
+      ).toThrow('docker/login-action');
     });
 
     test('applies default versionFiles settings', () => {

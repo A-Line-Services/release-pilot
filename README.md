@@ -195,6 +195,32 @@ Pick one:
 1. **Log in before release-pilot** (recommended) with [`docker/login-action`](https://github.com/docker/login-action) and leave the credentials unset. release-pilot then skips `docker login`.
 2. **Pass credentials to release-pilot** with the `docker-username` / `docker-password` inputs, or with `docker.username` / `docker.password` in the config. Config values take precedence.
 
+**OIDC:** use your cloud's login action before release-pilot and leave the credentials unset. Examples are `aws-actions/configure-aws-credentials` + `aws-actions/amazon-ecr-login`, `google-github-actions/auth` + `docker/login-action`, or `azure/login`. The job needs `permissions: id-token: write`.
+
+### Multiple registries
+
+`registries` replaces `registry` and pushes one build to each registry:
+
+```yaml
+docker:
+  image: myorg/my-service
+  registries: [ghcr.io, docker.io]
+```
+
+One username/password can't cover several registries. Log in to each one before release-pilot:
+
+```yaml
+- uses: docker/login-action@v4
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+- uses: docker/login-action@v4
+  with:
+    username: ${{ vars.DOCKERHUB_USERNAME }}
+    password: ${{ secrets.DOCKERHUB_TOKEN }}
+```
+
 ### Example: Rust binary shipped as a Docker image
 
 ```yaml
@@ -290,6 +316,7 @@ packages:
     publishArgs: string[]     # Arguments for custom command
     docker:               # Docker-specific config
       registry: string    # Registry URL (default: docker.io)
+      registries: [string] # Push to several registries (replaces registry)
       image: string       # Image name (required)
       username: string    # Registry username (fallback: docker-username input)
       password: string    # Registry password (fallback: docker-password input)

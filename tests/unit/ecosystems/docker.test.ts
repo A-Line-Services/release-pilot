@@ -24,7 +24,7 @@ function createDockerContext(
 /** Resolved docker config with sensible test defaults */
 function dockerConfig(overrides: Partial<ResolvedDockerConfig> = {}): ResolvedDockerConfig {
   return {
-    registry: 'ghcr.io',
+    registries: ['ghcr.io'],
     image: 'org/app',
     dockerfile: 'Dockerfile',
     tags: ['latest', '{version}'],
@@ -119,7 +119,7 @@ describe('DockerEcosystem', () => {
       const files = await docker.getVersionFiles(
         createDockerContext(project.path, {
           docker: {
-            registry: 'ghcr.io',
+            registries: ['ghcr.io'],
             image: 'org/app',
             dockerfile: 'Dockerfile.prod',
             context: '.',
@@ -195,6 +195,28 @@ describe('DockerEcosystem', () => {
         'ghcr.io/org/app:dev',
         'ghcr.io/org/app:1.4.0-rc.abc',
       ]);
+    });
+
+    test('builds once and tags the image for every registry', async () => {
+      const { exec, calls } = recordingExec();
+      const logs: string[] = [];
+
+      await new DockerEcosystem(exec).publish(
+        createDockerContext('/repo', {
+          version: '1.4.0',
+          docker: dockerConfig({ registries: ['ghcr.io', 'docker.io'] }),
+          log: (msg) => logs.push(msg),
+        })
+      );
+
+      expect(calls.filter((c) => c.args[0] === 'buildx')).toHaveLength(1);
+      expect(flagValues(buildCall(calls).args, '-t')).toEqual([
+        'ghcr.io/org/app:latest',
+        'ghcr.io/org/app:1.4.0',
+        'docker.io/org/app:latest',
+        'docker.io/org/app:1.4.0',
+      ]);
+      expect(logs.join('\n')).toContain('docker.io/org/app');
     });
 
     test('falls back to the package path as build context', async () => {
@@ -318,6 +340,62 @@ describe('DockerEcosystem', () => {
         expect(login.options?.input?.toString()).toBe('input-pass');
         expect(buildCall(calls)).toBeDefined();
       });
+
+      test('skips input credentials when pushing to several registries', async () => {
+        const { exec, calls } = recordingExec();
+        const logs: string[] = [];
+
+        await new DockerEcosystem(exec).publish(
+          createDockerContext('/repo', {
+            version: '1.0.0',
+            docker: dockerConfig({ registries: ['ghcr.io', 'docker.io'] }),
+            registry: { dockerUsername: 'input-user', dockerPassword: 'input-pass' },
+            log: (msg) => logs.push(msg),
+          })
+        );
+
+        expect(calls.some((c) => c.args[0] === 'login')).toBe(false);
+        expect(logs.join('\n')).toContain('docker/login-action');
+        expect(buildCall(calls)).toBeDefined();
+      });
+    });
+  });
+
+  describe('unpublish', () => {
+    test('deletes the tag from every registry', async () => {
+      const { exec, calls } = recordingExec();
+
+      const deleted = await new DockerEcosystem(exec).unpublish(
+        createDockerContext('/repo', {
+          docker: dockerConfig({
+            registries: ['gcr.io', '123.dkr.ecr.eu-west-1.amazonaws.com'],
+          }),
+        }),
+        'v1.4.0'
+      );
+
+      expect(deleted).toBe(true);
+      expect(calls.map((c) => c.command)).toEqual(['gcloud', 'aws']);
+      expect(calls[0]!.args).toContain('gcr.io/org/app:1.4.0');
+      expect(calls[1]!.args).toContain('imageTag=1.4.0');
+    });
+
+    test('reports failure when any registry fails', async () => {
+      const exec: ExecFn = async (command) => {
+        if (command === 'aws') throw new Error('denied');
+        return 0;
+      };
+
+      const deleted = await new DockerEcosystem(exec).unpublish(
+        createDockerContext('/repo', {
+          docker: dockerConfig({
+            registries: ['gcr.io', '123.dkr.ecr.eu-west-1.amazonaws.com'],
+          }),
+        }),
+        '1.4.0'
+      );
+
+      expect(deleted).toBe(false);
     });
   });
 });
