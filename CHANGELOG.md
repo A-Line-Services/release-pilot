@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.15] - 2026-09-27
+
+### Bug Fixes
+
+- fix(docker): publish with real config and version ([#15](https://github.com/A-Line-Services/release-pilot/pull/15)) by @Arthurdw
+
 ## [1.2.14] - 2026-09-27
 
 ### Chores
